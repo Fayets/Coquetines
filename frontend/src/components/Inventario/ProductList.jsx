@@ -526,14 +526,16 @@ export default function ProductList() {
                 </td>
                 <td className="text-right pr-2">
                   <div className="inline-flex items-center justify-end gap-0.5 flex-wrap">
-                    <button
-                      type="button"
-                      className="p-2 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg"
-                      onClick={() => openIngresoStock(product)}
-                      title="Ingreso de stock (reposición)"
-                    >
-                      <PackagePlus className="h-4 w-4" />
-                    </button>
+                    {esOwner && (
+                      <button
+                        type="button"
+                        className="p-2 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg"
+                        onClick={() => openIngresoStock(product)}
+                        title="Ingreso de stock (reposición)"
+                      >
+                        <PackagePlus className="h-4 w-4" />
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="p-2 text-slate-500 hover:text-teal-600 hover:bg-teal-50 rounded-lg"
@@ -558,7 +560,7 @@ export default function ProductList() {
         </table>
       </div>
 
-      {ingresoProduct && (
+      {esOwner && ingresoProduct && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-[1px]"
           role="dialog"

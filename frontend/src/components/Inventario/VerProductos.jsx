@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useParams } from "react-router-dom";
+import Swal from "sweetalert2";
 import EditProduct from "./EditProduct";
 import { appendSucursalParam, getUser, getToken } from "../../utils/sucursal";
 import { API_URL } from "../../utils/api";
@@ -15,7 +16,21 @@ const VerProductos = () => {
   const [ingresosHistorial, setIngresosHistorial] = useState([]);
   const [historialPage, setHistorialPage] = useState(1);
   const user = getUser();
+  const esOwner = user.role === "OWNER";
   const esEmpleado = user.role === "EMPLEADO";
+
+  const handleClickEditar = () => {
+    if (!esOwner) {
+      Swal.fire({
+        title: "Sin permiso",
+        text: "Solo el rol OWNER (dueña) puede editar productos. Consultá con la administración del local.",
+        icon: "info",
+        confirmButtonText: "Entendido",
+      });
+      return;
+    }
+    SetVerEditar(true);
+  };
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -121,8 +136,9 @@ const VerProductos = () => {
           <div className="bg-white p-6 rounded-lg shadow-md">
             <h2 className="text-xl font-semibold mb-4">Acciones</h2>
             <button
-              className="bg-blue-600 text-white px-4 py-2 rounded-md mr-2 w-full md:w-auto cursor-pointer"
-              onClick={() => SetVerEditar(true)}
+              type="button"
+              className="bg-blue-600 text-white px-4 py-2 rounded-md mr-2 w-full md:w-auto cursor-pointer hover:bg-blue-700"
+              onClick={handleClickEditar}
             >
               Editar Producto
             </button>
@@ -191,7 +207,7 @@ const VerProductos = () => {
           )}
         </div>
 
-        {VerEditar && (
+        {esOwner && VerEditar && (
           <div className="bg-white p-6 rounded-lg shadow-md">
             <EditProduct product={product} />
           </div>

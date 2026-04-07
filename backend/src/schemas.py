@@ -133,6 +133,19 @@ class StockIngresoAPIResponse(BaseModel):
     stock_actual: int
 
 
+class RankingProductoVendidoItem(BaseModel):
+    """Fila del ranking global (solo OWNER). Cantidad agregada desde líneas de venta."""
+
+    posicion: int
+    producto_id: int
+    codigo: str
+    nombre: str
+    marca: Optional[str] = "Generico"
+    sucursal_id: Optional[int] = None
+    sucursal_nombre: Optional[str] = None
+    cantidad_vendida: int
+
+
 #CATEGORIAS (catálogo único compartido por todas las sucursales)
 class CategoryCreate(BaseModel):
     name: str = Field(

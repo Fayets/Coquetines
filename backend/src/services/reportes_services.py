@@ -1,4 +1,6 @@
 from io import BytesIO
+from datetime import date, timedelta
+from collections import defaultdict
 from pony.orm import db_session
 from fastapi import HTTPException
 from reportlab.lib.pagesizes import letter, A4
@@ -416,3 +418,73 @@ class ReportService:
             import traceback
             traceback.print_exc()
             raise HTTPException(status_code=500, detail=f"Error al generar PDF de códigos de barra: {str(e)}")
+
+    @db_session
+    def ranking_productos_vendidos(self, periodo: str) -> list[dict]:
+        """
+        Suma cantidades de VentaProducto filtradas por fecha de la venta (Venta.fecha).
+        periodo: todo | dia | semana | mes
+        """
+        try:
+            today = date.today()
+            p = (periodo or "todo").lower().strip()
+            if p == "dia":
+
+                def fecha_ok(d):
+                    return d == today
+
+            elif p == "semana":
+                start = today - timedelta(days=6)
+
+                def fecha_ok(d):
+                    return start <= d <= today
+
+            elif p == "mes":
+
+                def fecha_ok(d):
+                    return d.year == today.year and d.month == today.month
+
+            elif p == "todo":
+                fecha_ok = None
+            else:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Período inválido. Use: todo, dia, semana, mes.",
+                )
+
+            totals = defaultdict(int)
+            for vp in models.VentaProducto.select():
+                if fecha_ok is not None and not fecha_ok(vp.venta.fecha):
+                    continue
+                totals[int(vp.producto.id)] += int(vp.cantidad)
+
+            sorted_ids = sorted(totals.keys(), key=lambda k: totals[k], reverse=True)
+            result = []
+            for pos, pid in enumerate(sorted_ids, start=1):
+                prod = models.Product.get(id=pid)
+                if not prod:
+                    continue
+                suc = prod.sucursal
+                result.append(
+                    {
+                        "posicion": pos,
+                        "producto_id": pid,
+                        "codigo": str(prod.codigo or ""),
+                        "nombre": str(prod.nombre or ""),
+                        "marca": str(prod.marca or "Generico"),
+                        "sucursal_id": int(suc.id) if suc else None,
+                        "sucursal_nombre": str(suc.nombre) if suc else None,
+                        "cantidad_vendida": int(totals[pid]),
+                    }
+                )
+            return result
+        except HTTPException:
+            raise
+        except Exception as e:
+            import traceback
+
+            traceback.print_exc()
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error al armar el ranking de productos: {str(e)}",
+            )

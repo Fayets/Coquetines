@@ -43,14 +43,14 @@ def update_product(
     codigo: str,
     product_update: schemas.ProductCreate,
     sucursal_id: int | None = Query(None, description="Sucursal (obligatorio para OWNER)"),
-    current_user=Depends(get_current_user),
+    current_user=Depends(get_owner_user),
 ):
+    """Solo OWNER puede actualizar productos (precios, stock, datos)."""
     sid = get_sucursal_id_for_user(current_user, sucursal_id)
     if sid is None:
         return {"message": "Debe indicar sucursal (o tener una asignada).", "success": False}
     try:
-        es_empleado = getattr(current_user, "role", None) == "EMPLEADO"
-        update_result = service.update_product(codigo, sid, product_update, es_empleado=es_empleado)
+        update_result = service.update_product(codigo, sid, product_update, es_empleado=False)
         return {"message": update_result["message"], "success": True}
     except HTTPException as e:
         return {"message": e.detail, "success": False}
@@ -231,9 +231,9 @@ def stats_por_sucursal(current_user=Depends(get_owner_user)):
 @router.post("/ingreso-stock", response_model=schemas.StockIngresoAPIResponse)
 def registrar_ingreso_stock(
     body: schemas.StockIngresoCreate,
-    current_user=Depends(get_current_user),
+    current_user=Depends(get_owner_user),
 ):
-    """Suma stock al producto existente y guarda fecha, cantidad y motivo (opcional)."""
+    """Solo OWNER: suma stock al producto existente y guarda fecha, cantidad y motivo (opcional)."""
     try:
         r = service.registrar_ingreso_stock(body, current_user)
         return schemas.StockIngresoAPIResponse(

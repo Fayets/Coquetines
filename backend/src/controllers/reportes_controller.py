@@ -1,7 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, Response
+from typing import List, Literal
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from src import schemas
 from src.services.reportes_services import ReportService
-from src.controllers.auth_controller import get_current_user
+from src.controllers.auth_controller import get_current_user, get_owner_user
 
 router = APIRouter()
 report_service = ReportService()
@@ -50,3 +52,21 @@ def generate_barcodes(data: schemas.CodigoBarraRequest, current_user=Depends(get
         raise e
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al generar códigos de barra: {str(e)}")
+
+
+@router.get("/ranking-productos-vendidos", response_model=List[schemas.RankingProductoVendidoItem])
+def ranking_productos_vendidos(
+    periodo: Literal["todo", "dia", "semana", "mes"] = Query(
+        "todo",
+        description="todo=histórico; dia=ventas con fecha de hoy; semana=últimos 7 días; mes=mes calendario actual",
+    ),
+    current_user=Depends(get_owner_user),
+):
+    """Solo OWNER: ranking por cantidad vendida según período (Venta + VentaProducto)."""
+    try:
+        rows = report_service.ranking_productos_vendidos(periodo)
+        return [schemas.RankingProductoVendidoItem(**r) for r in rows]
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al obtener el ranking: {type(e).__name__}")

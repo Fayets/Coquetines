@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { getUser, getToken } from "../../utils/sucursal";
 
 import { API_URL } from "../../utils/api";
+import RankingProductosVendidos from "../Reportes/RankingProductosVendidos";
 
 export default function VentasReports() {
   const [loading, setLoading] = useState(true);
@@ -70,7 +71,7 @@ export default function VentasReports() {
     if (token) fetchVentasData();
   }, [token, esOwner]);
 
-  if (loading) {
+  if (loading && !esOwner) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
         <Loader2 className="h-10 w-10 animate-spin text-teal-600" />
@@ -84,52 +85,65 @@ export default function VentasReports() {
     emerald: "bg-emerald-500 text-white",
   };
 
-  // Vista OWNER: una sección por sucursal
-  if (esOwner && statsPorSucursal.length > 0) {
+  if (esOwner) {
     return (
       <div className="p-8">
         <div className="mb-8">
           <h1 className="text-2xl font-semibold text-slate-900">Reportes de ventas</h1>
-          <p className="text-slate-500 text-sm mt-0.5">Estadísticas por sucursal</p>
+          <p className="text-slate-500 text-sm mt-0.5">
+            Ranking de productos (solo dueña) y estadísticas por sucursal
+          </p>
         </div>
 
-        <div className="space-y-10">
-          {statsPorSucursal.map((suc) => (
-            <div key={suc.sucursal_id} className="bg-slate-50 rounded-xl border border-slate-200 p-6">
-              <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2 mb-4">
-                <Building2 className="h-5 w-5 text-teal-600" />
-                {suc.sucursal_nombre}
-              </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
-                  <div className={`inline-flex p-2.5 rounded-lg ${colorClasses.teal}`}>
-                    <DollarSign className="h-5 w-5" />
+        <RankingProductosVendidos />
+
+        {loading ? (
+          <div className="flex justify-center items-center py-16">
+            <Loader2 className="h-10 w-10 animate-spin text-teal-600" />
+          </div>
+        ) : statsPorSucursal.length > 0 ? (
+          <div className="space-y-10">
+            {statsPorSucursal.map((suc) => (
+              <div key={suc.sucursal_id} className="bg-slate-50 rounded-xl border border-slate-200 p-6">
+                <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2 mb-4">
+                  <Building2 className="h-5 w-5 text-teal-600" />
+                  {suc.sucursal_nombre}
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+                    <div className={`inline-flex p-2.5 rounded-lg ${colorClasses.teal}`}>
+                      <DollarSign className="h-5 w-5" />
+                    </div>
+                    <p className="text-2xl font-semibold text-slate-900 mt-4">
+                      ${Number(suc.total_ventas).toLocaleString()}
+                    </p>
+                    <p className="text-sm text-slate-500 mt-0.5">Total de ventas</p>
                   </div>
-                  <p className="text-2xl font-semibold text-slate-900 mt-4">
-                    ${Number(suc.total_ventas).toLocaleString()}
-                  </p>
-                  <p className="text-sm text-slate-500 mt-0.5">Total de ventas</p>
-                </div>
-                <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
-                  <div className={`inline-flex p-2.5 rounded-lg ${colorClasses.blue}`}>
-                    <ShoppingCart className="h-5 w-5" />
+                  <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+                    <div className={`inline-flex p-2.5 rounded-lg ${colorClasses.blue}`}>
+                      <ShoppingCart className="h-5 w-5" />
+                    </div>
+                    <p className="text-2xl font-semibold text-slate-900 mt-4">{suc.cantidad_ventas}</p>
+                    <p className="text-sm text-slate-500 mt-0.5">Número de ventas</p>
                   </div>
-                  <p className="text-2xl font-semibold text-slate-900 mt-4">{suc.cantidad_ventas}</p>
-                  <p className="text-sm text-slate-500 mt-0.5">Número de ventas</p>
-                </div>
-                <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
-                  <div className={`inline-flex p-2.5 rounded-lg ${colorClasses.emerald}`}>
-                    <TrendingUp className="h-5 w-5" />
+                  <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+                    <div className={`inline-flex p-2.5 rounded-lg ${colorClasses.emerald}`}>
+                      <TrendingUp className="h-5 w-5" />
+                    </div>
+                    <p className="text-2xl font-semibold text-slate-900 mt-4">
+                      ${Number(suc.ganancia_total).toLocaleString()}
+                    </p>
+                    <p className="text-sm text-slate-500 mt-0.5">Ganancia total</p>
                   </div>
-                  <p className="text-2xl font-semibold text-slate-900 mt-4">
-                    ${Number(suc.ganancia_total).toLocaleString()}
-                  </p>
-                  <p className="text-sm text-slate-500 mt-0.5">Ganancia total</p>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-slate-500 mb-8">
+            No hay estadísticas por sucursal para mostrar (p. ej. solo figura Sucursal Principal).
+          </p>
+        )}
 
         <div className="mt-8 bg-white rounded-xl border border-slate-200 shadow-sm p-6">
           <h2 className="text-lg font-medium text-slate-900 mb-4">Generar reportes</h2>
@@ -149,7 +163,7 @@ export default function VentasReports() {
     );
   }
 
-  // Vista no OWNER (o OWNER sin sucursales): un solo bloque de totales
+  // Vista ADMIN / sin rol OWNER: totales de la sucursal
   const stats = [
     {
       title: "Total de ventas",
