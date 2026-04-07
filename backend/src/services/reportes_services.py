@@ -298,8 +298,7 @@ class ReportService:
                     labels.append({
                         "codigo": producto.codigo,
                         "nombre": producto.nombre,
-                        "talle": producto.talle or "",
-                        "precio": float(producto.precio_venta or 0),
+                        "talle": (producto.talle or "").strip(),
                     })
 
             if not labels:
@@ -309,20 +308,31 @@ class ReportService:
             c = canvas.Canvas(buf, pagesize=A4)
             page_w, page_h = A4
 
-            cols = 3
-            rows = 9
             margin_x = 12 * mm
             margin_top = 10 * mm
             margin_bottom = 10 * mm
-            h_gap = 4 * mm
-            v_gap = 3 * mm
+            h_gap = 2.5 * mm
+            v_gap = 2.5 * mm
 
             usable_w = page_w - 2 * margin_x
             usable_h = page_h - margin_top - margin_bottom
-            label_w = (usable_w - (cols - 1) * h_gap) / cols
+
+            # Ancho fijo de etiqueta 4 cm (antes ~5,5 cm al usar 3 columnas en A4)
+            label_w = 40 * mm
+            cols = max(1, int((usable_w + h_gap) / (label_w + h_gap)))
+            total_row_w = cols * label_w + (cols - 1) * h_gap
+            start_x = margin_x + (usable_w - total_row_w) / 2
+
+            # Filas: alto de celda según espacio vertical disponible
+            target_label_h = 28 * mm
+            rows = max(1, int((usable_h + v_gap) / (target_label_h + v_gap)))
             label_h = (usable_h - (rows - 1) * v_gap) / rows
 
             idx = 0
+            inner_pad = 2 * mm
+            max_bc_w = label_w - 2 * inner_pad
+            # Altura de barras ~ proporcional al nuevo tamaño (antes 14 mm; ~4/5.5 del largo anterior)
+            bar_height = min(11 * mm, max(6 * mm, label_h * 0.36))
 
             while idx < len(labels):
                 for row in range(rows):
@@ -332,7 +342,7 @@ class ReportService:
                         lbl = labels[idx]
                         idx += 1
 
-                        x = margin_x + col * (label_w + h_gap)
+                        x = start_x + col * (label_w + h_gap)
                         y = page_h - margin_top - (row + 1) * label_h - row * v_gap
 
                         c.saveState()
@@ -340,32 +350,54 @@ class ReportService:
                         c.setLineWidth(0.4)
                         c.roundRect(x, y, label_w, label_h, 2 * mm)
 
-                        nombre_display = lbl["nombre"][:22] + ("..." if len(lbl["nombre"]) > 22 else "")
+                        nombre_display = _truncate_to_width(
+                            str(lbl["nombre"] or ""),
+                            "Helvetica-Bold",
+                            6.5,
+                            label_w - 2 * inner_pad,
+                        )
                         c.setFont("Helvetica-Bold", 6.5)
                         c.drawCentredString(x + label_w / 2, y + label_h - 9, nombre_display)
 
-                        talle_precio = f"Talle: {lbl['talle']}  |  ${lbl['precio']:,.0f}"
-                        c.setFont("Helvetica", 5.5)
-                        c.drawCentredString(x + label_w / 2, y + label_h - 17, talle_precio)
+                        line_y = y + label_h - 17
+                        if lbl["talle"]:
+                            c.setFont("Helvetica", 5.5)
+                            c.drawCentredString(x + label_w / 2, line_y, f"Talle: {lbl['talle']}")
 
-                        barcode_value = lbl["codigo"]
+                        barcode_value = str(lbl["codigo"] or "")
+                        # Números abajo, barras arriba; separación clara entre base del Code128 y el texto
+                        text_baseline = y + 2 * mm
+                        gap_bar_to_text = 2.2 * mm
+                        text_cap_pt = 5.8  # altura aprox. de dígitos Helvetica 6 sobre la línea base
+                        bc_y = text_baseline + text_cap_pt + gap_bar_to_text
+                        max_bar_top = y + label_h - 11
+                        bar_h = bar_height
+                        if bc_y + bar_h > max_bar_top:
+                            bar_h = max(6 * mm, max_bar_top - bc_y)
+
                         try:
                             bc = code128.Code128(
                                 barcode_value,
                                 barWidth=0.7,
-                                barHeight=14 * mm,
+                                barHeight=bar_h,
                                 humanReadable=False,
                             )
-                            bc_width = bc.width
-                            bc_x = x + (label_w - bc_width) / 2
-                            bc_y = y + 10
-                            bc.drawOn(c, bc_x, bc_y)
+                            scale_x = 1.0
+                            if bc.width > 0 and bc.width > max_bc_w:
+                                scale_x = max_bc_w / bc.width
+                            vis_w = bc.width * scale_x
+                            bc_x = x + (label_w - vis_w) / 2
+                            c.saveState()
+                            c.translate(bc_x, bc_y)
+                            c.scale(scale_x, 1)
+                            bc.drawOn(c, 0, 0)
+                            c.restoreState()
                         except Exception:
                             c.setFont("Helvetica", 7)
                             c.drawCentredString(x + label_w / 2, y + label_h / 2 - 5, barcode_value)
 
                         c.setFont("Helvetica", 6)
-                        c.drawCentredString(x + label_w / 2, y + 4, barcode_value)
+                        c.drawCentredString(x + label_w / 2, text_baseline, barcode_value)
 
                         c.restoreState()
 
