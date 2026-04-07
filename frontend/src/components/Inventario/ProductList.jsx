@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { Search, Plus, Building2 } from "lucide-react";
+import { Search, Plus, Building2, PackagePlus } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import axios from "axios";
 import { FaEye } from "react-icons/fa";
@@ -28,6 +28,87 @@ export default function ProductList() {
   const token = getToken();
   const user = getUser();
   const esOwner = user.role === "OWNER";
+
+  const [ingresoProduct, setIngresoProduct] = useState(null);
+  const [ingresoFecha, setIngresoFecha] = useState("");
+  const [ingresoCantidad, setIngresoCantidad] = useState("");
+  const [ingresoMotivo, setIngresoMotivo] = useState("");
+  const [ingresoSubmitting, setIngresoSubmitting] = useState(false);
+
+  const todayLocalISO = () => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+
+  const openIngresoStock = (product) => {
+    setIngresoProduct(product);
+    setIngresoFecha(todayLocalISO());
+    setIngresoCantidad("");
+    setIngresoMotivo("");
+  };
+
+  const closeIngresoStock = () => {
+    setIngresoProduct(null);
+    setIngresoSubmitting(false);
+  };
+
+  const submitIngresoStock = async (e) => {
+    e.preventDefault();
+    if (!ingresoProduct?.id) return;
+    const qty = parseInt(String(ingresoCantidad).trim(), 10);
+    if (!Number.isFinite(qty) || qty < 1) {
+      Swal.fire({ title: "Cantidad inválida", text: "Ingresá un entero mayor a 0.", icon: "warning" });
+      return;
+    }
+    if (!ingresoFecha) {
+      Swal.fire({ title: "Fecha", text: "Seleccioná la fecha del ingreso.", icon: "warning" });
+      return;
+    }
+    setIngresoSubmitting(true);
+    try {
+      const body = {
+        producto_id: ingresoProduct.id,
+        fecha: ingresoFecha,
+        cantidad: qty,
+      };
+      const motivoTrim = ingresoMotivo.trim();
+      if (motivoTrim) body.motivo = motivoTrim;
+
+      const { data } = await axios.post(`${API_URL}/products/ingreso-stock`, body, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (data?.success === false) {
+        Swal.fire({ title: "Error", text: data?.message || "No se pudo registrar", icon: "error" });
+        return;
+      }
+      const nuevoStock = data.stock_actual;
+      setProducts((prev) =>
+        prev.map((p) => (p.id === ingresoProduct.id ? { ...p, stock: nuevoStock } : p))
+      );
+      closeIngresoStock();
+      Swal.fire({
+        title: "Ingreso registrado",
+        text: `Stock actual: ${nuevoStock} unidades.`,
+        icon: "success",
+        timer: 2200,
+        showConfirmButton: false,
+      });
+    } catch (error) {
+      const d = error.response?.data?.detail;
+      const msg = Array.isArray(d)
+        ? d.map((x) => x.msg || x).join(" ")
+        : d ||
+          (typeof error.response?.data === "string" ? error.response.data : null) ||
+          error.response?.data?.message ||
+          "No se pudo registrar el ingreso.";
+      Swal.fire({ title: "Error", text: String(msg), icon: "error" });
+    } finally {
+      setIngresoSubmitting(false);
+    }
+  };
 
   useEffect(() => {
     if (!loading && searchInputRef.current) {
@@ -425,7 +506,7 @@ export default function ProductList() {
               <th>Talle</th>
               <th>Precio</th>
               <th>Stock</th>
-              <th className="w-24">Acciones</th>
+              <th className="w-40 text-right pr-4">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -443,9 +524,18 @@ export default function ProductList() {
                     {product.stock}
                   </span>
                 </td>
-                <td>
-                  <div className="flex items-center gap-1">
+                <td className="text-right pr-2">
+                  <div className="inline-flex items-center justify-end gap-0.5 flex-wrap">
                     <button
+                      type="button"
+                      className="p-2 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg"
+                      onClick={() => openIngresoStock(product)}
+                      title="Ingreso de stock (reposición)"
+                    >
+                      <PackagePlus className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
                       className="p-2 text-slate-500 hover:text-teal-600 hover:bg-teal-50 rounded-lg"
                       onClick={() => handleViewProduct(product)}
                       title="Ver"
@@ -453,6 +543,7 @@ export default function ProductList() {
                       <FaEye className="h-4 w-4" />
                     </button>
                     <button
+                      type="button"
                       className="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg"
                       onClick={() => deleteProduct(product)}
                       title="Eliminar"
@@ -466,6 +557,89 @@ export default function ProductList() {
           </tbody>
         </table>
       </div>
+
+      {ingresoProduct && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-[1px]"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="ingreso-stock-title"
+          onClick={(ev) => {
+            if (ev.target === ev.currentTarget) closeIngresoStock();
+          }}
+        >
+          <div
+            className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-md overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 py-4 border-b border-slate-100">
+              <h2 id="ingreso-stock-title" className="text-lg font-semibold text-slate-900">
+                Ingreso de stock
+              </h2>
+              <p className="text-sm text-slate-500 mt-1">
+                {ingresoProduct.codigo} · {ingresoProduct.nombre}
+                <span className="block text-xs mt-0.5">
+                  Stock actual: <strong>{ingresoProduct.stock}</strong>
+                </span>
+              </p>
+            </div>
+            <form onSubmit={submitIngresoStock} className="px-5 py-4 space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Fecha del ingreso</label>
+                <input
+                  type="date"
+                  required
+                  value={ingresoFecha}
+                  onChange={(e) => setIngresoFecha(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">Cantidad agregada</label>
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  required
+                  value={ingresoCantidad}
+                  onChange={(e) => setIngresoCantidad(e.target.value)}
+                  placeholder="Ej: 10"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1">
+                  Motivo <span className="text-slate-400 font-normal">(opcional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={ingresoMotivo}
+                  onChange={(e) => setIngresoMotivo(e.target.value)}
+                  placeholder="Ej: Reposición por pedido"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                />
+              </div>
+              <div className="flex gap-2 justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={closeIngresoStock}
+                  disabled={ingresoSubmitting}
+                  className="px-4 py-2 text-sm font-medium text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={ingresoSubmitting}
+                  className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  {ingresoSubmitting ? "Guardando…" : "Registrar ingreso"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       <div className="flex items-center justify-between">
         <p className="text-sm text-slate-500">

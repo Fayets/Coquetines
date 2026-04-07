@@ -46,6 +46,34 @@ def _product_to_dict(product, ocultar_costo: bool = False):
         raise
 
 
+def _usuario_puede_modificar_producto(current_user, product) -> None:
+    """OWNER: cualquier producto. ADMIN/EMPLEADO: solo el de su sucursal (o sin sucursal si es la default)."""
+    role = getattr(current_user, "role", None)
+    if role == "OWNER":
+        return
+    user_sid = getattr(current_user, "sucursal_id", None)
+    if user_sid is None:
+        raise HTTPException(
+            status_code=403,
+            detail="No tenés permiso para registrar ingreso de stock.",
+        )
+    user_sid = int(user_sid)
+    ps = product.sucursal
+    if ps is not None:
+        if int(ps.id) != user_sid:
+            raise HTTPException(
+                status_code=403,
+                detail="No podés ingresar stock de productos de otra sucursal.",
+            )
+        return
+    default_id = _default_sucursal_id()
+    if user_sid != default_id:
+        raise HTTPException(
+            status_code=403,
+            detail="No podés modificar productos sin sucursal asignada.",
+        )
+
+
 class ProductServices:
     def _init_(self):
         pass
@@ -468,3 +496,53 @@ class ProductServices:
                 import traceback
                 traceback.print_exc()
                 raise HTTPException(status_code=500, detail="Error al buscar stock en otras sucursales.")
+
+    def registrar_ingreso_stock(self, data: schemas.StockIngresoCreate, current_user) -> dict:
+        with db_session:
+            try:
+                product = models.Product.get(id=data.producto_id)
+                if not product:
+                    raise HTTPException(status_code=404, detail="Producto no encontrado")
+                _usuario_puede_modificar_producto(current_user, product)
+                motivo = (data.motivo or "").strip() or None
+                models.IngresoStock(
+                    producto=product,
+                    fecha=data.fecha,
+                    cantidad=int(data.cantidad),
+                    motivo=motivo,
+                )
+                product.stock = int(product.stock or 0) + int(data.cantidad)
+                return {
+                    "message": "Ingreso de stock registrado correctamente.",
+                    "stock_actual": int(product.stock),
+                }
+            except HTTPException:
+                raise
+            except Exception as e:
+                print(f"Error al registrar ingreso de stock: {e}")
+                raise HTTPException(status_code=500, detail="Error al registrar el ingreso de stock.")
+
+    def list_ingresos_stock_producto(self, producto_id: int, current_user) -> list[dict]:
+        with db_session:
+            try:
+                product = models.Product.get(id=producto_id)
+                if not product:
+                    raise HTTPException(status_code=404, detail="Producto no encontrado")
+                _usuario_puede_modificar_producto(current_user, product)
+                # Evitar select() sobre IngresoStock: en algunas versiones de Pony rompe ("tuple index out of range").
+                rows = list(product.ingresos_stock)
+                rows.sort(key=lambda i: (i.fecha, i.id), reverse=True)
+                return [
+                    {
+                        "id": int(r.id),
+                        "fecha": r.fecha,
+                        "cantidad": int(r.cantidad),
+                        "motivo": r.motivo,
+                    }
+                    for r in rows
+                ]
+            except HTTPException:
+                raise
+            except Exception as e:
+                print(f"Error al listar ingresos de stock: {e}")
+                raise HTTPException(status_code=500, detail="Error al listar ingresos de stock.")

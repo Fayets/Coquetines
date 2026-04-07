@@ -110,6 +110,29 @@ class ProductResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
+class StockIngresoCreate(BaseModel):
+    """Reposición: suma unidades al stock del producto existente y deja auditoría."""
+
+    producto_id: int
+    fecha: date
+    cantidad: int = Field(..., gt=0, description="Unidades agregadas al stock")
+    motivo: Optional[str] = Field(None, max_length=500)
+
+
+class StockIngresoRegistroItem(BaseModel):
+    id: int
+    fecha: date
+    cantidad: int
+    motivo: Optional[str] = None
+
+
+class StockIngresoAPIResponse(BaseModel):
+    message: str
+    success: bool
+    stock_actual: int
+
+
 #CATEGORIAS (catálogo único compartido por todas las sucursales)
 class CategoryCreate(BaseModel):
     name: str = Field(

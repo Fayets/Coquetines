@@ -66,7 +66,19 @@ class Product(db.Entity):
     stock_minimo = Required(int, default=0)
     ventas = Set("VentaProducto")
     creditos_productos = Set("CreditoProducto")
+    ingresos_stock = Set("IngresoStock")
     _table_ = "Products"
+
+
+# Registro de reposición / ingreso de stock (sin crear códigos nuevos)
+class IngresoStock(db.Entity):
+    id = PrimaryKey(int, auto=True)
+    producto = Required("Product", column="producto_id")
+    fecha = Required(date)
+    cantidad = Required(int)
+    motivo = Optional(str)
+    _table_ = "Ingresos_Stock"
+
 
 # Modelo de ventas (por sucursal)
 class Venta(db.Entity):

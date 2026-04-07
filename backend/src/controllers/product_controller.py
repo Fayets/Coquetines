@@ -226,3 +226,37 @@ def stats_por_sucursal(current_user=Depends(get_owner_user)):
             status_code=500,
             detail=f"{type(e).__name__}: {str(e)}",
         )
+
+
+@router.post("/ingreso-stock", response_model=schemas.StockIngresoAPIResponse)
+def registrar_ingreso_stock(
+    body: schemas.StockIngresoCreate,
+    current_user=Depends(get_current_user),
+):
+    """Suma stock al producto existente y guarda fecha, cantidad y motivo (opcional)."""
+    try:
+        r = service.registrar_ingreso_stock(body, current_user)
+        return schemas.StockIngresoAPIResponse(
+            message=r["message"],
+            success=True,
+            stock_actual=r["stock_actual"],
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error inesperado: {type(e).__name__}")
+
+
+@router.get("/ingreso-stock/historial", response_model=List[schemas.StockIngresoRegistroItem])
+def historial_ingreso_stock(
+    producto_id: int = Query(..., description="ID del producto (PK)"),
+    current_user=Depends(get_current_user),
+):
+    """Listado de ingresos registrados para un producto (más recientes primero)."""
+    try:
+        rows = service.list_ingresos_stock_producto(producto_id, current_user)
+        return [schemas.StockIngresoRegistroItem(**x) for x in rows]
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error inesperado: {type(e).__name__}")
