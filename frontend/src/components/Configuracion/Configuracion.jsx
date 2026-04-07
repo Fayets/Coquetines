@@ -7,6 +7,7 @@ import { getUser, getToken } from "../../utils/sucursal";
 import { useNavigate } from "react-router-dom";
 
 import { API_URL } from "../../utils/api";
+import { DEPLOY_COMMIT } from "../../utils/deployCommit";
 
 export default function Configuracion() {
   const [whatsapp, setWhatsapp] = useState("");
@@ -605,9 +606,9 @@ export default function Configuracion() {
 
           <div className="lg:col-span-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
             <span className="font-medium text-slate-700">Versión desplegada (interfaz)</span>
-            {import.meta.env.VITE_APP_COMMIT ? (
+            {DEPLOY_COMMIT ? (
               <code className="ml-2 rounded bg-white px-2 py-0.5 font-mono text-slate-900 border border-slate-200">
-                {import.meta.env.VITE_APP_COMMIT}
+                {DEPLOY_COMMIT}
               </code>
             ) : (
               <span className="ml-2 text-slate-400">No disponible en este build</span>
