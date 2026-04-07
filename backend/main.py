@@ -9,6 +9,7 @@ from src.controllers.auth_controller import router as auth_router
 from src.controllers.users_controller import router as users_router
 from src.controllers.product_controller import router as product_router
 from src.controllers.category_controller import router as category_router
+from src.controllers.color_controller import router as color_router
 from src.controllers.reportes_controller import router as reportes_router
 from src.controllers.ventas_controller import router as ventas_router
 from src.controllers.cliente_controller import router as cliente_router
@@ -23,6 +24,22 @@ app = FastAPI()
 print("[startup] Conectando DB y generando mapping...")
 db.generate_mapping(create_tables=True)
 print("[startup] Mapping listo.")
+
+# Catálogo de colores: NEUTRO debe existir (migración SQL en producción + este respaldo en vacío/nuevo)
+from src import models as _models_startup
+
+
+@db_session
+def _ensure_neutro_color():
+    if _models_startup.Color.get(name="NEUTRO") is None:
+        _models_startup.Color(name="NEUTRO")
+        print("[startup] Color NEUTRO creado en catálogo.")
+
+
+try:
+    _ensure_neutro_color()
+except Exception as _e:
+    print(f"[startup] Aviso: no se pudo asegurar NEUTRO (¿falta migración SQL en Products.color_id?): {_e}")
 
 
 app.add_middleware(
@@ -45,6 +62,9 @@ app.include_router(product_router, prefix="/products", tags=["productos"])
 
 # Categorias
 app.include_router(category_router, prefix="/categories", tags=["categorias"])
+
+# Colores (catálogo global, como categorías)
+app.include_router(color_router, prefix="/colors", tags=["colores"])
 
 #Reportes
 app.include_router(reportes_router, prefix="/reportes", tags=["reportes"])

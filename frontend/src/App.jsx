@@ -23,6 +23,7 @@ import CreditReports from "./components/Creditos/CreditReports";
 import Pagos from "./components/Creditos/Pagos";
 import AdjustStock from "./components/Inventario/AdjustStock";
 import CategoriasList from "./components/Inventario/CategoriasList";
+import ColoresList from "./components/Inventario/ColoresList";
 import CajaDiaria from "./components/Caja/CajaDiaria";
 import Configuracion from "./components/Configuracion/Configuracion";
 import TransferirStock from "./components/Transferencia/TransferirStock";
@@ -44,6 +45,7 @@ function App() {
           <Route path="stock/details/:codigo" element={<VerProducto />} />
           <Route path="stock/adjust/:codigo" element={<AdjustStock />} />
           <Route path="categorias" element={<CategoriasList />} />
+          <Route path="colores" element={<ColoresList />} />
           <Route path="ventas/nueva" element={<NuevaVenta />} />
           <Route path="ventas" element={<VentasList />} />
           <Route path="ventas/reports" element={<VentasReports />} />

@@ -20,6 +20,11 @@ def _product_to_dict(product, ocultar_costo: bool = False):
             categoria = {"id": int(cat.id), "name": str(getattr(cat, "name", "") or "")}
         else:
             categoria = None
+        col = getattr(product, "color", None)
+        if col and getattr(col, "id", None) is not None:
+            color = {"id": int(col.id), "name": str(getattr(col, "name", "") or "")}
+        else:
+            color = {"id": 0, "name": "NEUTRO"}
         precio_costo = 0.0 if ocultar_costo else (float(product.precio_costo) if getattr(product, "precio_costo", None) is not None else 0.0)
         return {
             "id": int(getattr(product, "id", 0)),
@@ -29,6 +34,7 @@ def _product_to_dict(product, ocultar_costo: bool = False):
             "marca": str(getattr(product, "marca", "") or "Generico"),
             "talle": str(getattr(product, "talle", "") or ""),
             "categoria": categoria,
+            "color": color,
             "precio_costo": precio_costo,
             "precio_venta": float(product.precio_venta) if getattr(product, "precio_venta", None) is not None else 0.0,
             "precio_et": float(product.precio_et) if getattr(product, "precio_et", None) is not None else 0.0,
@@ -59,6 +65,9 @@ class ProductServices:
                 category = models.Category.get(id=codigo_data.categoria_id)
                 if not category:
                     raise HTTPException(status_code=404, detail="Categoría no encontrada")
+                color_ent = models.Color.get(id=codigo_data.color_id)
+                if not color_ent:
+                    raise HTTPException(status_code=404, detail="Color no encontrado")
                 precio_costo = 0.0 if es_empleado else codigo_data.precio_costo
                 producto = models.Product(
                     sucursal=sucursal,
@@ -67,6 +76,7 @@ class ProductServices:
                     marca=codigo_data.marca or "",
                     talle=codigo_data.talle,
                     categoria=category,
+                    color=color_ent,
                     precio_costo=precio_costo,
                     precio_venta=codigo_data.precio_venta,
                     precio_et=codigo_data.precio_et,
@@ -77,6 +87,7 @@ class ProductServices:
                 product_dict["sucursal_id"] = sucursal_id
                 if product_dict.get("categoria"):
                     product_dict["categoria"] = {"id": category.id, "name": category.name}
+                product_dict["color"] = {"id": color_ent.id, "name": color_ent.name}
                 return product_dict
             except HTTPException:
                 raise
@@ -109,6 +120,8 @@ class ProductServices:
                 if not product:
                     raise HTTPException(status_code=404, detail="Producto no encontrado")
                 precio_costo = 0.0 if ocultar_costo else float(product.precio_costo)
+                col = product.color
+                color_dict = {"id": int(col.id), "name": col.name} if col else {"id": 0, "name": "NEUTRO"}
                 product_dict = {
                     "id": product.id,
                     "sucursal_id": product.sucursal.id if product.sucursal else None,
@@ -117,6 +130,7 @@ class ProductServices:
                     "marca": product.marca or "Generico",
                     "talle": product.talle,
                     "categoria": {"id": product.categoria.id, "name": product.categoria.name} if product.categoria else None,
+                    "color": color_dict,
                     "precio_costo": precio_costo,
                     "precio_venta": float(product.precio_venta),
                     "precio_et": float(product.precio_et) if product.precio_et is not None else 0.0,
@@ -179,6 +193,9 @@ class ProductServices:
                 category = models.Category.get(id=product_update.categoria_id)
                 if not category:
                     raise HTTPException(status_code=404, detail="Categoría no encontrada")
+                color_ent = models.Color.get(id=product_update.color_id)
+                if not color_ent:
+                    raise HTTPException(status_code=404, detail="Color no encontrado")
                 if product_update.codigo and product_update.codigo != product.codigo:
                     existing = models.Product.get(codigo=product_update.codigo, sucursal=sucursal)
                     if existing:
@@ -197,6 +214,7 @@ class ProductServices:
                 product.stock = product_update.stock
                 product.stock_minimo = product_update.stock_minimo
                 product.categoria = category
+                product.color = color_ent
                 if product.sucursal is None and sucursal:
                     product.sucursal = sucursal
                 return {"message": "Producto actualizado correctamente"}
@@ -271,6 +289,7 @@ class ProductServices:
                         "marca": product.marca or "Generico",
                         "talle": product.talle,
                         "categoria": {"id": product.categoria.id, "name": product.categoria.name} if product.categoria else None,
+                        "color": {"id": product.color.id, "name": product.color.name} if product.color else {"id": 0, "name": "NEUTRO"},
                         "stock": int(product.stock),
                         "stock_minimo": int(product.stock_minimo),
                         "precio_costo": 0.0 if ocultar_costo else float(product.precio_costo),

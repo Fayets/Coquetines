@@ -63,6 +63,9 @@ const VerProductos = () => {
               {product.categoria?.name || "Sin categoría"}
             </p>
             <p className="mb-2 mt-2">
+              <strong>Color:</strong> {product.color?.name ?? "—"}
+            </p>
+            <p className="mb-2 mt-2">
               <strong>Talle:</strong> {product.talle}
             </p>
             <p className="mb-2 mt-2">

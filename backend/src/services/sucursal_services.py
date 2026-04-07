@@ -203,12 +203,22 @@ class SucursalServices:
                 if models.Product.get(codigo=codigo_destino):
                     codigo_destino = _generar_codigo_unico()
                 categoria = producto_origen.categoria
+                color_o = producto_origen.color
+                if color_o is None:
+                    color_o = models.Color.get(name="NEUTRO")
+                if color_o is None:
+                    raise HTTPException(
+                        status_code=500,
+                        detail="Falta el color NEUTRO en la base de datos; ejecutá la migración SQL.",
+                    )
                 producto_destino = models.Product(
                     sucursal=destino,
                     codigo=codigo_destino,
                     nombre=producto_origen.nombre,
+                    marca=producto_origen.marca or "Generico",
                     talle=producto_origen.talle,
                     categoria=categoria,
+                    color=color_o,
                     precio_costo=producto_origen.precio_costo,
                     precio_venta=producto_origen.precio_venta,
                     precio_et=producto_origen.precio_et or 0,

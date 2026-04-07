@@ -17,6 +17,8 @@ export default function ProductList() {
   const [mostrarInput, setMostrarInput] = useState(false);
   const [nuevaCategoria, setNuevaCategoria] = useState("");
   const [categories, setCategories] = useState([]);
+  const [colors, setColors] = useState([]);
+  const [selectedColor, setSelectedColor] = useState("");
   const [sucursales, setSucursales] = useState([]);
   const [sucursalFilter, setSucursalFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -94,13 +96,29 @@ export default function ProductList() {
     fetchCategories();
   }, [token]);
 
+  useEffect(() => {
+    const fetchColors = async () => {
+      if (!token) return;
+      try {
+        const response = await axios.get(`${API_URL}/colors/all`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setColors(Array.isArray(response.data) ? response.data : []);
+      } catch (error) {
+        console.error("Error al obtener colores:", error);
+      }
+    };
+    fetchColors();
+  }, [token]);
+
   const filteredProducts = products.filter(
     (product) => {
       const matchSearch =
         product.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (product.codigo && product.codigo.toString().toLowerCase().includes(searchTerm.toLowerCase()));
       const matchCategory = !selectedCategory || (product.categoria && String(product.categoria.id) === selectedCategory);
-      return matchSearch && matchCategory;
+      const matchColor = !selectedColor || (product.color && String(product.color.id) === selectedColor);
+      return matchSearch && matchCategory && matchColor;
     }
   );
 
@@ -369,11 +387,27 @@ export default function ProductList() {
               <select
                 className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white"
                 value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
+                onChange={(e) => {
+                  setSelectedCategory(e.target.value);
+                  setCurrentPage(1);
+                }}
               >
                 <option value="">Todas las categorías</option>
                 {categories.map((cat) => (
                   <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
+              </select>
+              <select
+                className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white"
+                value={selectedColor}
+                onChange={(e) => {
+                  setSelectedColor(e.target.value);
+                  setCurrentPage(1);
+                }}
+              >
+                <option value="">Todos los colores</option>
+                {colors.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
             </div>
@@ -387,6 +421,7 @@ export default function ProductList() {
               <th>Nombre</th>
               <th>Marca</th>
               <th>Categoría</th>
+              <th>Color</th>
               <th>Talle</th>
               <th>Precio</th>
               <th>Stock</th>
@@ -400,6 +435,7 @@ export default function ProductList() {
                 <td>{product.nombre}</td>
                 <td>{product.marca || "Generico"}</td>
                 <td>{product.categoria?.name ?? "—"}</td>
+                <td>{product.color?.name ?? "—"}</td>
                 <td>{product.talle}</td>
                 <td>${product.precio_venta}</td>
                 <td>

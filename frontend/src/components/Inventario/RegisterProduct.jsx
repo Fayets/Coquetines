@@ -11,8 +11,10 @@ export default function ProductForm() {
   const [name, setName] = useState("");
   const [marca, setMarca] = useState("");
   const [category, setCategory] = useState("");
+  const [colorId, setColorId] = useState("");
   const [talle, setTalle] = useState("");
   const [categories, setCategories] = useState([]);
+  const [colors, setColors] = useState([]);
   const [codeExists, setCodeExists] = useState(false);
 
   const [stockInitial, setStockInitial] = useState("");
@@ -26,6 +28,7 @@ export default function ProductForm() {
   const [sucursales, setSucursales] = useState([]);
   const [sucursalOwnerId, setSucursalOwnerId] = useState("");
   const [isLoadingCategories, setIsLoadingCategories] = useState(true);
+  const [isLoadingColors, setIsLoadingColors] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
@@ -76,6 +79,23 @@ export default function ProductForm() {
     fetchCategories();
   }, [token]);
 
+  useEffect(() => {
+    const fetchColors = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/colors/all`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setColors(Array.isArray(response.data) ? response.data : []);
+      } catch (error) {
+        console.error("Error al obtener los colores:", error);
+        setColors([]);
+      } finally {
+        setIsLoadingColors(false);
+      }
+    };
+    fetchColors();
+  }, [token]);
+
   const sucursalParaApi = esOwner
     ? sucursalOwnerId === "" ? null : Number(sucursalOwnerId)
     : getSucursalId();
@@ -93,9 +113,15 @@ export default function ProductForm() {
 
     // Convertir el id a número
     const categoriaId = Number(category);
+    const colorIdNum = Number(colorId);
 
     if (isNaN(categoriaId)) {
       setError("ID de categoría inválido.");
+      setLoading(false);
+      return;
+    }
+    if (isNaN(colorIdNum)) {
+      setError("Seleccioná un color.");
       setLoading(false);
       return;
     }
@@ -103,7 +129,8 @@ export default function ProductForm() {
     console.log("Datos a enviar:", {
       codigo: code,
       nombre: name,
-      categoria_id: categoriaId, // Ahora es un número
+      categoria_id: categoriaId,
+      color_id: colorIdNum,
       talle: talle, 
       stock: stockInitial,
       stock_minimo: stockMin,
@@ -123,6 +150,7 @@ export default function ProductForm() {
           nombre: name,
           marca: marca,
           categoria_id: categoriaId,
+          color_id: colorIdNum,
           talle: talle,
           stock: stockInitial,
           stock_minimo: stockMin,
@@ -279,11 +307,34 @@ export default function ProductForm() {
                 onChange={(e) => setCategory(e.target.value)}
                 className="w-full px-3 py-2 border rounded-md"
                 required
+                disabled={isLoadingCategories}
               >
                 <option value="">Seleccionar categoría</option>
                 {categories.map((cat) => (
                   <option key={cat.id} value={cat.id}>
                     {cat.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Color
+              </label>
+              <p className="text-xs text-slate-500 mb-1">
+                Catálogo global de colores (igual que categorías). Gestioná la lista en Inventario → Colores.
+              </p>
+              <select
+                value={colorId}
+                onChange={(e) => setColorId(e.target.value)}
+                className="w-full px-3 py-2 border rounded-md"
+                required
+                disabled={isLoadingColors}
+              >
+                <option value="">Seleccionar color</option>
+                {colors.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
                   </option>
                 ))}
               </select>

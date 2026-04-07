@@ -21,6 +21,7 @@ import {
   UserCircle,
   Barcode,
   SearchCheck,
+  Palette,
 } from "lucide-react";
 import logo from "../../images/logo.png";
 import { getUser } from "../../utils/sucursal";
@@ -92,6 +93,7 @@ const navStructure = (esOwner, role) => [
             { path: "/stock", icon: List, label: "Listado" },
             { path: "/stock/new", icon: PlusCircle, label: "Nuevo Producto" },
             { path: "/categorias", icon: Tags, label: "Categorías" },
+            { path: "/colores", icon: Palette, label: "Colores" },
             { path: "/stock/reportes", icon: BarChart2, label: "Reportes" },
           ]
         : role === "EMPLEADO"
@@ -99,11 +101,13 @@ const navStructure = (esOwner, role) => [
               { path: "/stock", icon: List, label: "Listado" },
               { path: "/stock/new", icon: PlusCircle, label: "Nuevo Producto" },
               { path: "/categorias", icon: Tags, label: "Categorías" },
+              { path: "/colores", icon: Palette, label: "Colores" },
             ]
           : [
               { path: "/stock", icon: List, label: "Listado" },
               { path: "/stock/new", icon: PlusCircle, label: "Nuevo Producto" },
               { path: "/categorias", icon: Tags, label: "Categorías" },
+              { path: "/colores", icon: Palette, label: "Colores" },
               { path: "/stock/control", icon: AlertCircle, label: "Control" },
               { path: "/stock/reportes", icon: BarChart2, label: "Reportes" },
             ],
@@ -144,7 +148,7 @@ export default function SidebarLayout() {
   const [expanded, setExpanded] = useState(() => {
     const path = location.pathname;
     if (path.includes("ventas")) return "ventas";
-    if (path.includes("stock") || path.includes("categorias")) return "stock";
+    if (path.includes("stock") || path.includes("categorias") || path.includes("colores")) return "stock";
     if (path.includes("Creditos") || path.includes("creditos")) return "Creditos";
     if (path.includes("Clientes") || path.includes("clientes") || path.includes("NuevoCliente") || path.includes("EditarCliente")) return "Clientes";
     return null;
@@ -173,7 +177,13 @@ export default function SidebarLayout() {
     if (path === "/ventas") return location.pathname === "/ventas" || location.pathname.startsWith("/ventas/");
     if (path === "/caja") return location.pathname === "/caja";
     if (path === "/configuracion") return location.pathname === "/configuracion";
-    if (path === "/stock") return location.pathname === "/stock" || location.pathname.startsWith("/stock/") || location.pathname === "/categorias";
+    if (path === "/stock")
+      return (
+        location.pathname === "/stock" ||
+        location.pathname.startsWith("/stock/") ||
+        location.pathname === "/categorias" ||
+        location.pathname === "/colores"
+      );
     if (path === "/Creditos") return location.pathname === "/Creditos" || location.pathname.startsWith("/creditos") || location.pathname === "/NuevoCredito";
     if (path === "/Clientes") return location.pathname === "/Clientes" || location.pathname === "/NuevoCliente" || location.pathname.startsWith("/EditarCliente") || location.pathname === "/clientes/reports";
     if (path === "/transferir-stock") return location.pathname === "/transferir-stock";
@@ -242,6 +252,7 @@ export default function SidebarLayout() {
                         (child.path === "/ventas" && location.pathname.startsWith("/ventas/details")) ||
                         (child.path === "/stock" && (location.pathname.startsWith("/stock/details") || location.pathname.startsWith("/stock/adjust"))) ||
                         (child.path === "/categorias" && location.pathname === "/categorias") ||
+                        (child.path === "/colores" && location.pathname === "/colores") ||
                         (child.path === "/Creditos" && location.pathname.startsWith("/creditos/"));
                       return (
                         <Link

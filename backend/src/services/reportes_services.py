@@ -50,43 +50,46 @@ class ReportService:
             width, height = letter
 
             margin_x = 40
-            column_width = (width - 2 * margin_x) / 8
+            num_cols = 9
+            column_width = (width - 2 * margin_x) / num_cols
 
             c.setFont("Helvetica-Bold", 16)
             c.drawCentredString(width / 2, height - 40, "Reporte de Inventario")
 
             y_position = height - 80
-            headers = ["Código", "Nombre", "Categoría", "Talle", "Stock", "P. Venta", "P. Costo", "P. E/T"]
-            c.setFont("Helvetica-Bold", 10)
+            headers = ["Código", "Nombre", "Categoría", "Color", "Talle", "Stock", "P. Venta", "P. Costo", "P. E/T"]
+            c.setFont("Helvetica-Bold", 9)
 
             for i, header in enumerate(headers):
                 c.drawString(margin_x + i * column_width, y_position, header)
             c.line(margin_x, y_position - 5, width - margin_x, y_position - 5)
 
-            c.setFont("Helvetica", 10)
+            c.setFont("Helvetica", 9)
             y_position -= 20
 
             for product in products:
                 if y_position < 50:
                     c.showPage()
                     y_position = height - 80
-                    c.setFont("Helvetica-Bold", 10)
+                    c.setFont("Helvetica-Bold", 9)
                     for i, header in enumerate(headers):
                         c.drawString(margin_x + i * column_width, y_position, header)
                     c.line(margin_x, y_position - 5, width - margin_x, y_position - 5)
-                    c.setFont("Helvetica", 10)
+                    c.setFont("Helvetica", 9)
                     y_position -= 20
 
                 categoria_nombre = product.categoria.name if product.categoria else "Sin categoría"
+                color_nombre = product.color.name if getattr(product, "color", None) else "NEUTRO"
 
                 c.drawString(margin_x + 0 * column_width, y_position, ReportService.truncate_text(product.codigo, 10))
                 c.drawString(margin_x + 1 * column_width, y_position, ReportService.truncate_text(product.nombre, 10))
-                c.drawString(margin_x + 2 * column_width, y_position, ReportService.truncate_text(categoria_nombre, 15))
-                c.drawString(margin_x + 3 * column_width, y_position, ReportService.truncate_text(product.talle, 5))
-                c.drawString(margin_x + 4 * column_width, y_position, str(product.stock))
-                c.drawString(margin_x + 5 * column_width, y_position, f"${product.precio_venta}")
-                c.drawString(margin_x + 6 * column_width, y_position, f"${product.precio_costo}")
-                c.drawString(margin_x + 7 * column_width, y_position, f"${product.precio_et}")
+                c.drawString(margin_x + 2 * column_width, y_position, ReportService.truncate_text(categoria_nombre, 12))
+                c.drawString(margin_x + 3 * column_width, y_position, ReportService.truncate_text(color_nombre, 10))
+                c.drawString(margin_x + 4 * column_width, y_position, ReportService.truncate_text(product.talle, 5))
+                c.drawString(margin_x + 5 * column_width, y_position, str(product.stock))
+                c.drawString(margin_x + 6 * column_width, y_position, f"${product.precio_venta}")
+                c.drawString(margin_x + 7 * column_width, y_position, f"${product.precio_costo}")
+                c.drawString(margin_x + 8 * column_width, y_position, f"${product.precio_et}")
                 y_position -= 20
 
             c.save()

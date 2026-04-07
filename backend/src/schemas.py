@@ -77,6 +77,7 @@ class ProductCreate(BaseModel):
     marca: Optional[str] = ""
     talle: str
     categoria_id: int
+    color_id: int
     precio_costo: float
     precio_venta: float
     precio_et: float
@@ -84,6 +85,10 @@ class ProductCreate(BaseModel):
     stock_minimo: int    
 
 class CategoryBase(BaseModel):
+    id: int
+    name: str
+
+class ColorBase(BaseModel):
     id: int
     name: str
 
@@ -95,6 +100,7 @@ class ProductResponse(BaseModel):
     marca: Optional[str] = "Generico"
     talle: str
     categoria: CategoryBase | None
+    color: ColorBase
     precio_costo: float
     precio_venta: float
     precio_et: float
@@ -115,6 +121,19 @@ class CategoryCreate(BaseModel):
 class CategoryResponse(BaseModel):
    name: str
    id:int
+
+# COLORES (catálogo global, igual que categorías)
+class ColorCreate(BaseModel):
+    name: str = Field(
+        ...,
+        min_length=1,
+        description="Nombre del color en el catálogo global; único sin distinguir mayúsculas.",
+    )
+
+
+class ColorResponse(BaseModel):
+    name: str
+    id: int
 
 class StockAdjustMessage(BaseModel):
     message: str

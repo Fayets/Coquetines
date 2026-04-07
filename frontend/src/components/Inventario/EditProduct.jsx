@@ -12,11 +12,13 @@ const EditProduct = ({ product }) => {
 
   // Estado para las categorías
   const [categories, setCategories] = useState([]);
+  const [colors, setColors] = useState([]);
   const [editedProduct, setEditedProduct] = useState({
     codigo: product.codigo,
     nombre: product.nombre,
     marca: product.marca || "Generico",
-    categoria_id: product.categoria.id,
+    categoria_id: product.categoria?.id ?? "",
+    color_id: product.color?.id ?? "",
     talle: product.talle,
     precio_costo: product.precio_costo,
     precio_venta: product.precio_venta,
@@ -42,12 +44,23 @@ const EditProduct = ({ product }) => {
       }      
     };
     fetchCategories();
+    const fetchColors = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/colors/all`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setColors(Array.isArray(response.data) ? response.data : []);
+      } catch (error) {
+        console.error("Error al obtener los colores:", error);
+      }
+    };
+    fetchColors();
   }, [token]);
 
   // Manejar cambios en los campos del formulario (textos en mayúsculas)
   const handleChange = (e) => {
     const { name, value } = e.target;
-    const numFields = ["precio_costo", "precio_venta", "stock", "stock_minimo", "categoria_id"];
+    const numFields = ["precio_costo", "precio_venta", "stock", "stock_minimo", "categoria_id", "color_id"];
     const textFields = ["codigo", "nombre", "marca", "talle"];
     let newValue = value;
     if (numFields.includes(name)) {
@@ -69,6 +82,7 @@ const EditProduct = ({ product }) => {
         nombre: String(editedProduct.nombre),
         marca: String(editedProduct.marca || "Generico"),
         categoria_id: Number(editedProduct.categoria_id),
+        color_id: Number(editedProduct.color_id),
         talle: String(editedProduct.talle),
         precio_costo: Number(editedProduct.precio_costo),
         precio_venta: Number(editedProduct.precio_venta),
@@ -167,6 +181,24 @@ const EditProduct = ({ product }) => {
           {categories.map((category) => (
             <option key={category.id} value={category.id}>
               {category.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Color */}
+      <div>
+        <label className="font-bold mb-2">Color</label>
+        <select
+          name="color_id"
+          value={editedProduct.color_id}
+          onChange={handleChange}
+          className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="">Seleccionar color</option>
+          {colors.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
             </option>
           ))}
         </select>

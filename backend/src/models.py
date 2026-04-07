@@ -42,6 +42,13 @@ class Category(db.Entity):
     products = Set("Product")
     _table_ = "Categories"
 
+# Catálogo global de colores (misma idea que Category; Product.color apunta aquí)
+class Color(db.Entity):
+    id = PrimaryKey(int, auto=True)
+    name = Required(str)
+    products = Set("Product")
+    _table_ = "Colors"
+
 # Modelo de productos (por sucursal: mismo código puede existir en varias sucursales con stock independiente)
 class Product(db.Entity):
     id = PrimaryKey(int, auto=True)
@@ -51,6 +58,7 @@ class Product(db.Entity):
     marca = Optional(str, default="Generico")
     talle = Required(str)
     categoria = Optional(Category)
+    color = Required("Color", column="color_id")
     precio_costo = Required(float)
     precio_venta = Required(float)
     precio_et = Optional(float, default=0)
