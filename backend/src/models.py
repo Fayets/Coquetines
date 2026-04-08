@@ -21,6 +21,8 @@ class Sucursal(db.Entity):
     cajas = Set("CajaDiaria")
     creditos = Set("CreditoPersonal")
     clientes = Set("Cliente")
+    cambios_venta = Set("CambioVenta")
+    notas_credito = Set("NotaCredito")
     _table_ = "Sucursales"
 
 # Modelo de usuario (sucursal_id es None para OWNER/dueña)
@@ -67,6 +69,8 @@ class Product(db.Entity):
     ventas = Set("VentaProducto")
     creditos_productos = Set("CreditoProducto")
     ingresos_stock = Set("IngresoStock")
+    cambios_venta_devuelto = Set("CambioVenta", reverse="producto_devuelto")
+    cambios_venta_nuevo = Set("CambioVenta", reverse="producto_nuevo")
     _table_ = "Products"
 
 
@@ -89,6 +93,7 @@ class Venta(db.Entity):
     total = Required(float)
     metodo_pago = Required(str)
     fecha = Required(date, default=lambda: date.today())
+    cambios = Set("CambioVenta", reverse="venta_original")
     _table_ = "Ventas"
 
 # Relación entre ventas y productos
@@ -98,6 +103,7 @@ class VentaProducto(db.Entity):
     producto = Required(Product)
     cantidad = Required(int)
     subtotal = Required(float)
+    cambios_como_linea = Set("CambioVenta", reverse="detalle_linea")
     _table_ = "Venta_Productos"
 
 # Modelo de clientes (por sucursal: cada sucursal tiene su propia lista de clientes)
@@ -157,6 +163,7 @@ class OrigenMovimientoCaja(str, Enum):
     VENTA = "VENTA"
     PAGO_CREDITO = "PAGO_CREDITO"
     MANUAL = "MANUAL"
+    CAMBIO_VENTA = "CAMBIO_VENTA"
 
 
 class CajaDiaria(db.Entity):
@@ -184,6 +191,40 @@ class MovimientoCaja(db.Entity):
     monto = Required(float)
     fecha_hora = Required(datetime, default=lambda: datetime.now())
     _table_ = "Movimientos_Caja"
+
+
+# Cambio de producto respecto de una venta (devolución parcial de línea + entrega de otro artículo)
+class CambioVenta(db.Entity):
+    id = PrimaryKey(int, auto=True)
+    venta_original = Required("Venta", column="venta_original_id")
+    sucursal = Optional("Sucursal", column="sucursal_id")
+    fecha = Required(date, default=lambda: date.today())
+    detalle_linea = Required("VentaProducto", column="venta_producto_id")
+    producto_devuelto = Required("Product", column="producto_devuelto_id")
+    cantidad_devuelta = Required(int)
+    valor_devuelto = Required(float)
+    producto_nuevo = Required("Product", column="producto_nuevo_id")
+    cantidad_nueva = Required(int)
+    valor_nuevo = Required(float)
+    diferencia_monto = Required(float)
+    metodo_pago_suplemento = Optional(str)
+    # Mismo UUID en todos los CambioVenta creados por un POST /cambios/registrar-lote (una fila en historial).
+    grupo_lote_uid = Optional(str, nullable=True)
+    # Al borrar el cambio (p. ej. al eliminar la venta), borrar la nota asociada.
+    nota_credito = Optional("NotaCredito", cascade_delete=True)
+    _table_ = "Cambios_Venta"
+
+
+# Nota de crédito (saldo a favor del cliente, p. ej. cambio por artículo de menor valor)
+class NotaCredito(db.Entity):
+    id = PrimaryKey(int, auto=True)
+    sucursal = Optional("Sucursal", column="sucursal_id")
+    cliente_nombre = Required(str)
+    monto = Required(float)
+    fecha = Required(date, default=lambda: date.today())
+    motivo = Optional(str)
+    cambio = Required("CambioVenta", column="cambio_id", unique=True, reverse="nota_credito")
+    _table_ = "Notas_Credito"
 
 
 # Configuración (clave-valor) para el administrador

@@ -17,6 +17,7 @@ import {
   Plus,
   Barcode,
   Search,
+  RefreshCw,
 } from "lucide-react";
 
 export default function DashboardStats() {
@@ -135,6 +136,18 @@ export default function DashboardStats() {
               </div>
             </Link>
             <Link
+              to="/ventas/cambio"
+              className="flex items-center gap-4 p-5 bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-violet-200 transition-all group"
+            >
+              <div className="p-3 bg-violet-50 rounded-lg group-hover:bg-violet-100 transition-colors">
+                <RefreshCw className="h-6 w-6 text-violet-600" />
+              </div>
+              <div>
+                <p className="font-medium text-slate-900">Cambio de producto</p>
+                <p className="text-sm text-slate-500">Desde una venta ya registrada</p>
+              </div>
+            </Link>
+            <Link
               to="/stock/new"
               className="flex items-center gap-4 p-5 bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-amber-200 transition-all group"
             >
@@ -228,6 +241,18 @@ export default function DashboardStats() {
             <div>
               <p className="font-medium text-slate-900">Nueva venta</p>
               <p className="text-sm text-slate-500">Registrar venta al contado</p>
+            </div>
+          </Link>
+          <Link
+            to="/ventas/cambio"
+            className="flex items-center gap-4 p-5 bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-violet-200 transition-all group"
+          >
+            <div className="p-3 bg-violet-50 rounded-lg group-hover:bg-violet-100 transition-colors">
+              <RefreshCw className="h-6 w-6 text-violet-600" />
+            </div>
+            <div>
+              <p className="font-medium text-slate-900">Cambio de producto</p>
+              <p className="text-sm text-slate-500">Desde una venta ya registrada</p>
             </div>
           </Link>
           <Link

@@ -22,6 +22,7 @@ import {
   Barcode,
   SearchCheck,
   Palette,
+  History,
 } from "lucide-react";
 import logo from "../../images/logo.png";
 import { getUser } from "../../utils/sucursal";
@@ -32,16 +33,19 @@ const ventasChildren = (esOwner, role) => {
     return [
       { path: "/ventas", icon: List, label: "Listado" },
       { path: "/ventas/reports", icon: BarChart2, label: "Reportes" },
+      { path: "/ventas/cambios-historial", icon: History, label: "Historial de cambios" },
     ];
   if (role === "EMPLEADO")
     return [
       { path: "/ventas", icon: List, label: "Listado" },
       { path: "/ventas/nueva", icon: PlusCircle, label: "Nueva Venta" },
+      { path: "/ventas/cambios-historial", icon: History, label: "Historial de cambios" },
     ];
   return [
     { path: "/ventas", icon: List, label: "Listado" },
     { path: "/ventas/nueva", icon: PlusCircle, label: "Nueva Venta" },
     { path: "/ventas/reports", icon: BarChart2, label: "Reportes" },
+    { path: "/ventas/cambios-historial", icon: History, label: "Historial de cambios" },
   ];
 };
 

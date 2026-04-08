@@ -70,3 +70,19 @@ def ranking_productos_vendidos(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al obtener el ranking: {type(e).__name__}")
+
+
+@router.get("/nota-credito-pdf/{nota_id}")
+def nota_credito_pdf(nota_id: int, current_user=Depends(get_current_user)):
+    """PDF de nota de crédito (cambios con saldo a favor del cliente)."""
+    try:
+        pdf_bytes = report_service.generate_nota_credito_pdf(nota_id)
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename=nota_credito_{nota_id}.pdf"},
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

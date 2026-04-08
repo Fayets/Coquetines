@@ -33,6 +33,26 @@ def _truncate_to_width(text: str, font_name: str, font_size: float, max_width: f
     return (t + ell) if t else ell
 
 
+def _wrap_lines(text: str, font_name: str, font_size: float, max_width: float) -> list[str]:
+    """Parte texto en líneas que entran en max_width (puntos)."""
+    if not text:
+        return []
+    words = str(text).split()
+    lines: list[str] = []
+    cur: list[str] = []
+    for w in words:
+        trial = " ".join(cur + [w])
+        if _text_width(trial, font_name, font_size) <= max_width:
+            cur.append(w)
+        else:
+            if cur:
+                lines.append(" ".join(cur))
+            cur = [w]
+    if cur:
+        lines.append(" ".join(cur))
+    return lines
+
+
 class ReportService:
     def __init__(self):
         pass
@@ -214,6 +234,134 @@ class ReportService:
         except Exception as e:
             print(f"Error al generar el recibo en PDF: {e}")
             raise HTTPException(status_code=500, detail="Error al generar el recibo en PDF.")
+
+    @db_session
+    def generate_nota_credito_pdf(self, nota_id: int) -> bytes:
+        try:
+            nc = models.NotaCredito.get(id=nota_id)
+            if not nc:
+                raise HTTPException(status_code=404, detail="Nota de crédito no encontrada")
+
+            buf = BytesIO()
+            c = canvas.Canvas(buf, pagesize=letter)
+            width, height = letter
+            margin = 50
+
+            def _u(s: object) -> str:
+                return str(s).upper()
+
+            def fmt_money(v) -> str:
+                try:
+                    return f"${float(v):,.2f}"
+                except (TypeError, ValueError):
+                    return "$0.00"
+
+            y = height - 48
+            text_w = width - 2 * margin
+            floor_y = margin + 52
+
+            def ensure_space(need_pts: int):
+                nonlocal y
+                if y < floor_y + need_pts:
+                    c.showPage()
+                    y = height - 48
+
+            c.setFont("Helvetica-Bold", 18)
+            t1 = _u("COQUETINES")
+            c.drawString((width - _text_width(t1, "Helvetica-Bold", 18)) / 2, y, t1)
+            c.setFont("Helvetica-Bold", 15)
+            t2 = _u("NOTA DE CRÉDITO")
+            y -= 26
+            c.drawString((width - _text_width(t2, "Helvetica-Bold", 15)) / 2, y, t2)
+
+            c.setFont("Helvetica", 10)
+            y -= 36
+            c.drawString(margin, y, f"Nº nota: {nc.id}")
+            y -= 14
+            c.drawString(margin, y, f"Fecha: {nc.fecha}")
+            y -= 14
+            c.drawString(margin, y, f"Cliente: {nc.cliente_nombre}")
+            y -= 14
+            if nc.motivo:
+                for ln in _wrap_lines(f"Motivo: {nc.motivo}", "Helvetica", 10, text_w):
+                    ensure_space(16)
+                    c.drawString(margin, y, ln)
+                    y -= 14
+
+            cambio = nc.cambio
+            if cambio:
+                venta = cambio.venta_original
+                uid = getattr(cambio, "grupo_lote_uid", None)
+                if uid:
+                    chops = sorted(
+                        [ch for ch in venta.cambios if getattr(ch, "grupo_lote_uid", None) == uid],
+                        key=lambda x: int(x.id),
+                    )
+                    if not chops:
+                        chops = [cambio]
+                else:
+                    chops = [cambio]
+
+                y -= 12
+                ensure_space(90)
+                c.setFont("Helvetica-Bold", 10)
+                c.drawString(margin, y, "Venta original")
+                y -= 15
+                c.setFont("Helvetica", 10)
+                vps = sorted(list(venta.productos), key=lambda vp: int(vp.id))
+                sale_bits = []
+                for vp in vps:
+                    pr = vp.producto
+                    nom = pr.nombre if pr else "—"
+                    sale_bits.append(f"{nom} ×{int(vp.cantidad)} ({fmt_money(vp.subtotal)})")
+                sale_body = f"N.º {venta.id} — Total {fmt_money(venta.total)} — " + " — ".join(sale_bits)
+                for ln in _wrap_lines(sale_body, "Helvetica", 10, text_w):
+                    ensure_space(14)
+                    c.drawString(margin, y, ln)
+                    y -= 13
+
+                y -= 6
+                ensure_space(70)
+                c.setFont("Helvetica-Bold", 10)
+                c.drawString(margin, y, "Cambio")
+                y -= 15
+                c.setFont("Helvetica", 10)
+                for ch in chops:
+                    pd = ch.producto_devuelto
+                    pn = ch.producto_nuevo
+                    one = (
+                        f"Devolvió {pd.nombre} ×{int(ch.cantidad_devuelta)} ({fmt_money(ch.valor_devuelto)}) — "
+                        f"se llevó {pn.nombre} ×{int(ch.cantidad_nueva)} ({fmt_money(ch.valor_nuevo)})"
+                    )
+                    for ln in _wrap_lines(one, "Helvetica", 10, text_w):
+                        ensure_space(14)
+                        c.drawString(margin, y, ln)
+                        y -= 13
+
+                y -= 8
+
+            ensure_space(48)
+            y -= 4
+            c.setFont("Helvetica-Bold", 13)
+            c.drawString(margin, y, f"Crédito a favor: {fmt_money(nc.monto)}")
+            y -= 28
+            c.setLineWidth(1)
+            c.line(margin, y, width - margin, y)
+            y -= 18
+            c.setFont("Helvetica-Oblique", 8)
+            c.drawString(
+                margin,
+                y,
+                "Documento interno. No reemplaza factura fiscal.",
+            )
+
+            c.save()
+            return buf.getvalue()
+        except HTTPException:
+            raise
+        except Exception as e:
+            print(f"Error al generar nota de crédito PDF: {e}")
+            raise HTTPException(status_code=500, detail="Error al generar la nota de crédito en PDF.")
 
     def generate_cierre_caja_pdf(self, resumen: dict) -> bytes:
         try:

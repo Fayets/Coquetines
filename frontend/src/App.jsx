@@ -10,6 +10,8 @@ import VerProducto from "./components/Inventario/VerProductos";
 import NuevaVenta from "./components/Ventas/RegisterSale";
 import VentasList from "./components/Ventas/VerVentas";
 import VentasReports from "./components/Ventas/SaleReports";
+import CambioProducto from "./components/Ventas/CambioProducto";
+import HistorialCambiosVenta from "./components/Ventas/HistorialCambiosVenta";
 import VentasControl from "./components/Ventas/VentaID";
 import ListadoCreditoss from "./components/Creditos/ListadoCreditoss";
 import ListadoClientes from "./components/Clientes/ListadoClientes";
@@ -49,6 +51,8 @@ function App() {
           <Route path="ventas/nueva" element={<NuevaVenta />} />
           <Route path="ventas" element={<VentasList />} />
           <Route path="ventas/reports" element={<VentasReports />} />
+          <Route path="ventas/cambio" element={<CambioProducto />} />
+          <Route path="ventas/cambios-historial" element={<HistorialCambiosVenta />} />
           <Route path="ventas/details/:id" element={<VentasControl />} />
           <Route path="Creditos" element={<ListadoCreditoss />} />
           <Route path="creditos/reports" element={<CreditReports />} />

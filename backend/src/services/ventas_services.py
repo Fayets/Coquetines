@@ -229,14 +229,24 @@ class VentasServices:
                 venta = models.Venta.get(id=venta_id)
                 if not venta:
                     raise HTTPException(status_code=404, detail="Venta no encontrada")
-                
+
+                # Los cambios de producto ya movieron stock (devuelto entra, reemplazo sale).
+                # Si solo revertimos la venta, ese movimiento queda aplicado y el stock queda mal.
+                for ch in list(venta.cambios):
+                    po = ch.producto_devuelto
+                    pn = ch.producto_nuevo
+                    if po:
+                        po.stock = int(po.stock or 0) - int(ch.cantidad_devuelta)
+                    if pn:
+                        pn.stock = int(pn.stock or 0) + int(ch.cantidad_nueva)
+
                 for item in venta.productos:
                     producto = item.producto
                     if producto:
                         producto.stock += item.cantidad
-                
+
                 deleted_id = venta.id
-                
+
                 venta.delete()
                 
                 return {"message": f"Venta #{deleted_id} eliminada correctamente"}

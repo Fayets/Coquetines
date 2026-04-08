@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from typing import List, Optional
 from datetime import datetime, date
 from src.models import Roles
@@ -207,6 +207,74 @@ class DetalleVentaResponse(BaseModel):
     cantidad: int
     precio_unitario: float  # Agregar el precio unitario
     subtotal: float
+
+
+class CambioVentaRegistro(BaseModel):
+    """Cambio de producto sobre una venta existente (misma sucursal)."""
+
+    venta_id: int
+    venta_producto_id: int
+    cantidad_devuelta: int = Field(..., gt=0)
+    producto_nuevo_id: int
+    cantidad_nueva: int = Field(..., gt=0)
+    sucursal_id: Optional[int] = None
+    metodo_pago_suplemento: Optional[str] = None  # Efectivo | Transferencia si el nuevo vale más
+
+
+class CambioVentaLineaItem(BaseModel):
+    """Una línea dentro de un cambio múltiple (misma venta)."""
+
+    venta_producto_id: int
+    cantidad_devuelta: int = Field(..., gt=0)
+    producto_nuevo_id: int
+    cantidad_nueva: int = Field(
+        0,
+        ge=0,
+        description="0 = sin descuento de stock del reemplazo (misma unidad física en otro ítem del lote).",
+    )
+    valor_nuevo: Optional[float] = Field(
+        None,
+        description="Si se informa, reemplaza precio×cant para valor_nuevo y diferencia (reparto N devoluciones → 1 entrega).",
+    )
+
+    @model_validator(mode="after")
+    def valor_si_cantidad_cero(self):
+        if self.cantidad_nueva == 0 and self.valor_nuevo is None:
+            raise ValueError("Con cantidad_nueva 0 debe enviarse valor_nuevo en el ítem.")
+        return self
+
+
+class CambioVentaRegistroLote(BaseModel):
+    """Varios cambios de producto sobre la misma venta en una sola operación."""
+
+    venta_id: int
+    items: list[CambioVentaLineaItem] = Field(..., min_length=1, max_length=20)
+    sucursal_id: Optional[int] = None
+    metodo_pago_suplemento: Optional[str] = None
+
+
+class CambioVentaItemResultado(BaseModel):
+    cambio_id: int
+    diferencia_monto: float
+    valor_devuelto: float
+    valor_nuevo: float
+    nota_credito_id: Optional[int] = None
+
+
+class CambioVentaResultadoLote(BaseModel):
+    success: bool
+    message: str
+    items: list[CambioVentaItemResultado]
+
+
+class CambioVentaResultado(BaseModel):
+    success: bool
+    message: str
+    cambio_id: int
+    diferencia_monto: float
+    valor_devuelto: float
+    valor_nuevo: float
+    nota_credito_id: Optional[int] = None
 
 
 # CLIENTES
