@@ -9,17 +9,10 @@ from pony.orm import db_session, flush
 
 from src import models
 from src.services.caja_services import CajaDiariaServices
+from src.services.precio_producto import obtener_precio_unitario
 from src.services.sucursal_services import SucursalServices
 
 _sucursal_svc = SucursalServices()
-
-
-def _precio_unitario_como_venta(producto, metodo_pago: str) -> float:
-    if metodo_pago in ("Efectivo", "Transferencia"):
-        u = producto.precio_et if producto.precio_et is not None else producto.precio_venta
-    else:
-        u = producto.precio_venta if producto.precio_venta is not None else producto.precio_et
-    return float(u or 0.0)
 
 
 def _venta_en_sucursal(venta, sucursal_id: int) -> bool:
@@ -108,7 +101,7 @@ class CambiosVentaServices:
                 unit_dev = float(vp.subtotal) / float(vp.cantidad) if vp.cantidad else 0.0
                 valor_devuelto = round(unit_dev * cantidad_devuelta, 2)
 
-                unit_new = _precio_unitario_como_venta(prod_new, venta.metodo_pago)
+                unit_new = obtener_precio_unitario(prod_new, venta.metodo_pago)
                 if valor_nuevo_override is not None:
                     valor_nuevo = round(float(valor_nuevo_override), 2)
                 else:

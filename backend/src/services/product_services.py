@@ -2,6 +2,7 @@ from pony.orm import db_session, select, sum
 from fastapi import HTTPException
 from pony.orm.core import TransactionIntegrityError
 from src import models, schemas
+from src.services.precio_producto import precio_transferencia_desde_et_o_explicito
 from src.services.sucursal_services import SucursalServices
 
 
@@ -38,6 +39,8 @@ def _product_to_dict(product, ocultar_costo: bool = False):
             "precio_costo": precio_costo,
             "precio_venta": float(product.precio_venta) if getattr(product, "precio_venta", None) is not None else 0.0,
             "precio_et": float(product.precio_et) if getattr(product, "precio_et", None) is not None else 0.0,
+            "precio_efectivo": float(getattr(product, "precio_efectivo", None) or 0),
+            "precio_transferencia": float(getattr(product, "precio_transferencia", None) or 0),
             "stock": int(product.stock) if getattr(product, "stock", None) is not None else 0,
             "stock_minimo": int(product.stock_minimo) if getattr(product, "stock_minimo", None) is not None else 0,
         }
@@ -97,6 +100,9 @@ class ProductServices:
                 if not color_ent:
                     raise HTTPException(status_code=404, detail="Color no encontrado")
                 precio_costo = 0.0 if es_empleado else codigo_data.precio_costo
+                tr_guardar = precio_transferencia_desde_et_o_explicito(
+                    codigo_data.precio_et, codigo_data.precio_transferencia
+                )
                 producto = models.Product(
                     sucursal=sucursal,
                     codigo=codigo_data.codigo,
@@ -108,6 +114,8 @@ class ProductServices:
                     precio_costo=precio_costo,
                     precio_venta=codigo_data.precio_venta,
                     precio_et=codigo_data.precio_et,
+                    precio_efectivo=codigo_data.precio_efectivo,
+                    precio_transferencia=tr_guardar,
                     stock=codigo_data.stock,
                     stock_minimo=codigo_data.stock_minimo,
                 )
@@ -162,6 +170,8 @@ class ProductServices:
                     "precio_costo": precio_costo,
                     "precio_venta": float(product.precio_venta),
                     "precio_et": float(product.precio_et) if product.precio_et is not None else 0.0,
+                    "precio_efectivo": float(getattr(product, "precio_efectivo", None) or 0),
+                    "precio_transferencia": float(getattr(product, "precio_transferencia", None) or 0),
                     "stock": int(product.stock),
                     "stock_minimo": int(product.stock_minimo),
                 }
@@ -205,7 +215,7 @@ class ProductServices:
 
 
 
-    def update_product(self, codigo: str, sucursal_id: int, product_update: schemas.ProductCreate, es_empleado: bool = False) -> dict:
+    def update_product(self, codigo: str, sucursal_id: int, product_update: schemas.ProductUpdate, es_empleado: bool = False) -> dict:
         with db_session:
             try:
                 sucursal = models.Sucursal.get(id=sucursal_id)
@@ -239,6 +249,10 @@ class ProductServices:
                     product.precio_costo = product_update.precio_costo
                 product.precio_venta = product_update.precio_venta
                 product.precio_et = product_update.precio_et
+                product.precio_efectivo = product_update.precio_efectivo
+                product.precio_transferencia = precio_transferencia_desde_et_o_explicito(
+                    product_update.precio_et, product_update.precio_transferencia
+                )
                 product.stock = product_update.stock
                 product.stock_minimo = product_update.stock_minimo
                 product.categoria = category
@@ -323,6 +337,8 @@ class ProductServices:
                         "precio_costo": 0.0 if ocultar_costo else float(product.precio_costo),
                         "precio_venta": float(product.precio_venta),
                         "precio_et": float(product.precio_et) if product.precio_et is not None else 0.0,
+                        "precio_efectivo": float(getattr(product, "precio_efectivo", None) or 0),
+                        "precio_transferencia": float(getattr(product, "precio_transferencia", None) or 0),
                     }
                     for product in low_stock_products
                 ]

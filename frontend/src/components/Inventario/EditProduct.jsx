@@ -22,7 +22,8 @@ const EditProduct = ({ product }) => {
     talle: product.talle,
     precio_costo: product.precio_costo,
     precio_venta: product.precio_venta,
-    precio_et: product.precio_et,
+    precio_efectivo: product.precio_efectivo ?? 0,
+    precio_transferencia: product.precio_transferencia ?? 0,
     stock: product.stock,
     stock_minimo: product.stock_minimo,
   });
@@ -60,7 +61,16 @@ const EditProduct = ({ product }) => {
   // Manejar cambios en los campos del formulario (textos en mayúsculas)
   const handleChange = (e) => {
     const { name, value } = e.target;
-    const numFields = ["precio_costo", "precio_venta", "stock", "stock_minimo", "categoria_id", "color_id"];
+    const numFields = [
+      "precio_costo",
+      "precio_venta",
+      "precio_efectivo",
+      "precio_transferencia",
+      "stock",
+      "stock_minimo",
+      "categoria_id",
+      "color_id",
+    ];
     const textFields = ["codigo", "nombre", "marca", "talle"];
     let newValue = value;
     if (numFields.includes(name)) {
@@ -86,7 +96,9 @@ const EditProduct = ({ product }) => {
         talle: String(editedProduct.talle),
         precio_costo: Number(editedProduct.precio_costo),
         precio_venta: Number(editedProduct.precio_venta),
-        precio_et: Number(editedProduct.precio_et),
+        precio_et: 0,
+        precio_efectivo: Number(editedProduct.precio_efectivo),
+        precio_transferencia: Number(editedProduct.precio_transferencia),
         stock: Number(editedProduct.stock),
         stock_minimo: Number(editedProduct.stock_minimo),
       };
@@ -235,7 +247,7 @@ const EditProduct = ({ product }) => {
 
       {/* Precio Venta */}
       <div>
-        <label className="font-bold mb-2">Precio Venta</label>
+        <label className="font-bold mb-2">Precio venta (tarjeta / lista)</label>
         <input
           type="number"
           name="precio_venta"
@@ -244,13 +256,22 @@ const EditProduct = ({ product }) => {
           className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
-      {/* Precio E/T */}
       <div>
-        <label className="font-bold mb-2">Precio E/T</label>
+        <label className="font-bold mb-2">Precio efectivo</label>
         <input
           type="number"
-          name="precio_et"
-          value={editedProduct.precio_et}
+          name="precio_efectivo"
+          value={editedProduct.precio_efectivo}
+          onChange={handleChange}
+          className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+      <div>
+        <label className="font-bold mb-2">Precio transferencia</label>
+        <input
+          type="number"
+          name="precio_transferencia"
+          value={editedProduct.precio_transferencia}
           onChange={handleChange}
           className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />

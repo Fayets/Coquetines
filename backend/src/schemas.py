@@ -81,8 +81,16 @@ class ProductCreate(BaseModel):
     precio_costo: float
     precio_venta: float
     precio_et: float
+    precio_efectivo: float = 0.0
+    precio_transferencia: float = 0.0
     stock: int
-    stock_minimo: int    
+    stock_minimo: int
+
+
+class ProductUpdate(ProductCreate):
+    """Misma forma que alta de producto; usado en PUT /products/update."""
+
+    pass
 
 class CategoryBase(BaseModel):
     id: int
@@ -104,6 +112,8 @@ class ProductResponse(BaseModel):
     precio_costo: float
     precio_venta: float
     precio_et: float
+    precio_efectivo: float = 0.0
+    precio_transferencia: float = 0.0
     stock: int
     stock_minimo: int
 

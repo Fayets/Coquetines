@@ -41,7 +41,7 @@ class UpdateMessage(BaseModel):
 @router.put("/update/{codigo}", response_model=UpdateMessage)
 def update_product(
     codigo: str,
-    product_update: schemas.ProductCreate,
+    product_update: schemas.ProductUpdate,
     sucursal_id: int | None = Query(None, description="Sucursal (obligatorio para OWNER)"),
     current_user=Depends(get_owner_user),
 ):

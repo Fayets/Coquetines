@@ -2,6 +2,7 @@ from fastapi.security import OAuth2PasswordBearer
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from src.db import db
+from src.db_migrations import ensure_products_precios_contado_columns
 from pony.orm import *
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,6 +20,10 @@ from src.controllers.caja_controller import router as caja_router
 from src.controllers.config_controller import router as config_router
 from src.controllers.sucursal_controller import router as sucursal_router
 app = FastAPI()
+
+# DDL en tablas ya existentes (Pony no agrega columnas nuevas en Postgres por sí solo)
+print("[startup] Verificando columnas de precios en Products...")
+ensure_products_precios_contado_columns()
 
 # Mapeando las entidades a tablas (si no existe la tabla, la crea)
 print("[startup] Conectando DB y generando mapping...")

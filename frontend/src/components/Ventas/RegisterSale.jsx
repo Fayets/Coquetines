@@ -5,6 +5,7 @@ import { Search, Plus, Trash2, CreditCard, UserPlus } from "lucide-react";
 import Swal from "sweetalert2";
 import { getSucursalId, getUser, getToken } from "../../utils/sucursal";
 import { API_URL } from "../../utils/api";
+import { precioUnitarioPorMetodoPago } from "../../utils/precioProducto";
 
 export default function NuevaVenta() {
   const [productos, setProductos] = useState([]);
@@ -193,20 +194,8 @@ export default function NuevaVenta() {
     }
   };
 
-  // Función que calcula el precio según el método de pago
-  const obtenerPrecio = (producto) => {
-    switch (paymentType.toLowerCase()) {
-      case "efectivo":
-      case "transferencia":  // Se agrega el caso para Transferencia
-        return producto.precio_et; // Precio para efectivo o transferencia
-      case "credito":
-        return producto.precio_venta; // Precio para crédito
-      case "debito":
-        return producto.precio_venta; // Precio para débito (ajustar si hay variación)
-      default:
-        return producto.precio_venta; // Precio por defecto
-    }
-  };
+  const obtenerPrecio = (producto) =>
+    precioUnitarioPorMetodoPago(producto, paymentType);
 
   const credito = () => {
     navigate("/NuevoCredito");
@@ -329,11 +318,13 @@ export default function NuevaVenta() {
                 <th>Producto</th>
                 <th>Cantidad</th>
                 <th>
-                  {paymentType === "Efectivo" || paymentType === "Transferencia"
-                    ? "Precio Efectivo/Transferencia"
-                    : paymentType === "Credito"
-                      ? "Precio Crédito"
-                      : "Precio Débito"}
+                  {paymentType === "Efectivo"
+                    ? "Precio efectivo"
+                    : paymentType === "Transferencia"
+                      ? "Precio transferencia"
+                      : paymentType === "Credito"
+                        ? "Precio tarjeta (crédito)"
+                        : "Precio tarjeta (débito)"}
                 </th>
                 <th>Subtotal</th>
                 <th className="w-16"></th>

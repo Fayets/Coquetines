@@ -5,6 +5,7 @@ from pony.orm.core import TransactionIntegrityError
 from datetime import datetime, date
 from src.services.caja_services import CajaDiariaServices
 from src.services.sucursal_services import SucursalServices
+from src.services.precio_producto import obtener_precio_unitario
 
 _sucursal_svc = SucursalServices()
 
@@ -38,12 +39,7 @@ class VentasServices:
                     if producto.stock < item.cantidad:
                         raise HTTPException(status_code=400, detail=f"Stock insuficiente para el producto {producto.nombre} - Stock actual: {producto.stock}")
                     
-                    # Determinar el precio unitario según el método de pago
-                    if venta.metodo_pago in ["Efectivo", "Transferencia"]:
-                        precio_unitario = (producto.precio_et if producto.precio_et is not None else producto.precio_venta) or 0.0
-                    else:
-                        precio_unitario = (producto.precio_venta if producto.precio_venta is not None else producto.precio_et) or 0.0
-                    precio_unitario = float(precio_unitario)
+                    precio_unitario = obtener_precio_unitario(producto, venta.metodo_pago)
                     
                     # Crear la relación entre la venta y el producto
                     models.VentaProducto(

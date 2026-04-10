@@ -121,16 +121,19 @@ const VerProductos = () => {
               <strong>Stock Minimo:</strong> {product.stock_minimo}
             </p>
             <p className="mb-2 mt-2">
-              <strong>Precio Venta:</strong> ${product.precio_venta}
+              <strong>Precio venta (lista / tarjeta):</strong> ${product.precio_venta}
+            </p>
+            <p className="mb-2 mt-2">
+              <strong>Precio efectivo:</strong> ${product.precio_efectivo ?? 0}
+            </p>
+            <p className="mb-2 mt-2">
+              <strong>Precio transferencia:</strong> ${product.precio_transferencia ?? 0}
             </p>
             {!esEmpleado && (
               <p className="mb-2 mt-2">
                 <strong>Precio Costo:</strong> ${product.precio_costo}
               </p>
             )}
-            <p className="mb-2 mt-2">
-              <strong>Precio E/T</strong> ${product.precio_et}
-            </p>
           </div>
 
           <div className="bg-white p-6 rounded-lg shadow-md">

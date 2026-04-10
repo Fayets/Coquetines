@@ -5,6 +5,7 @@ import { Search, Plus, Trash2, User, X } from "lucide-react";
 import Swal from "sweetalert2";
 import { getSucursalId, getUser, getToken } from "../../utils/sucursal";
 import { API_URL } from "../../utils/api";
+import { precioUnitarioPorMetodoPago } from "../../utils/precioProducto";
 
 export default function NuevoCredito() {
   const [clientes, setClientes] = useState([]);
@@ -76,18 +77,8 @@ export default function NuevoCredito() {
       c.dni?.includes(searchCliente)
   );
 
-  const obtenerPrecio = (producto) => {
-    switch (paymentType?.toLowerCase()) {
-      case "efectivo":
-      case "transferencia":
-        return producto.precio_et ?? producto.precio_venta;
-      case "crédito":
-      case "debito":
-        return producto.precio_venta;
-      default:
-        return producto.precio_venta;
-    }
-  };
+  const obtenerPrecio = (producto) =>
+    precioUnitarioPorMetodoPago(producto, paymentType);
 
   const agregarAlCarrito = () => {
     if (!selectedProduct) return;

@@ -4,13 +4,7 @@ import Swal from "sweetalert2";
 import { Building2, CalendarRange, Check, RefreshCw, Search } from "lucide-react";
 import { getUser, getToken, getSucursalId } from "../../utils/sucursal";
 import { API_URL } from "../../utils/api";
-
-function precioUnitarioVenta(product, metodoPago) {
-  if (metodoPago === "Efectivo" || metodoPago === "Transferencia") {
-    return Number(product.precio_et ?? product.precio_venta ?? 0);
-  }
-  return Number(product.precio_venta ?? product.precio_et ?? 0);
-}
+import { precioUnitarioPorMetodoPago as precioUnitarioVenta } from "../../utils/precioProducto";
 
 function clampCantDevolver(raw, max) {
   const m = Math.max(1, parseInt(max, 10) || 1);

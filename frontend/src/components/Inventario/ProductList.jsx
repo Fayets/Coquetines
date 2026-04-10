@@ -504,7 +504,9 @@ export default function ProductList() {
               <th>Categoría</th>
               <th>Color</th>
               <th>Talle</th>
-              <th>Precio</th>
+              <th>Lista</th>
+              <th>Efectivo</th>
+              <th>Transf.</th>
               <th>Stock</th>
               <th className="w-40 text-right pr-4">Acciones</th>
             </tr>
@@ -518,7 +520,9 @@ export default function ProductList() {
                 <td>{product.categoria?.name ?? "—"}</td>
                 <td>{product.color?.name ?? "—"}</td>
                 <td>{product.talle}</td>
-                <td>${product.precio_venta}</td>
+                <td className="tabular-nums">${product.precio_venta}</td>
+                <td className="tabular-nums">${product.precio_efectivo ?? 0}</td>
+                <td className="tabular-nums">${product.precio_transferencia ?? 0}</td>
                 <td>
                   <span className={product.stock < (product.stock_minimo || 5) ? "text-rose-600 font-medium" : ""}>
                     {product.stock}

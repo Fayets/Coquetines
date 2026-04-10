@@ -135,20 +135,28 @@ export default function BarcodePricePopup() {
         {product.talle && (
           <p className="text-xs text-slate-500 mb-3">Talle: {product.talle}</p>
         )}
-        <div className="flex gap-3">
-          <div className="flex-1 bg-slate-50 rounded-lg p-3 text-center">
-            <p className="text-slate-500 mb-1" style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-              Efect./Transf.
+        <div className="grid grid-cols-3 gap-2">
+          <div className="bg-slate-50 rounded-lg p-2 text-center">
+            <p className="text-slate-500 mb-0.5" style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              Efectivo
             </p>
-            <p className="text-lg font-bold text-slate-900">
-              ${product.precio_et ?? "—"}
+            <p className="text-sm font-bold text-slate-900 tabular-nums">
+              ${product.precio_efectivo != null && product.precio_efectivo !== "" ? product.precio_efectivo : "—"}
             </p>
           </div>
-          <div className="flex-1 bg-slate-50 rounded-lg p-3 text-center">
-            <p className="text-slate-500 mb-1" style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          <div className="bg-slate-50 rounded-lg p-2 text-center">
+            <p className="text-slate-500 mb-0.5" style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              Transf.
+            </p>
+            <p className="text-sm font-bold text-slate-900 tabular-nums">
+              ${product.precio_transferencia != null && product.precio_transferencia !== "" ? product.precio_transferencia : "—"}
+            </p>
+          </div>
+          <div className="bg-slate-50 rounded-lg p-2 text-center">
+            <p className="text-slate-500 mb-0.5" style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.04em" }}>
               Tarjeta
             </p>
-            <p className="text-lg font-bold text-slate-900">
+            <p className="text-sm font-bold text-slate-900 tabular-nums">
               ${product.precio_venta ?? "—"}
             </p>
           </div>

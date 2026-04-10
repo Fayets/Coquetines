@@ -149,7 +149,9 @@ export default function ConsultarStockSucursales() {
                       <th className="text-left px-4 py-3 font-medium text-slate-500">Marca</th>
                       <th className="text-left px-4 py-3 font-medium text-slate-500">Talle</th>
                       <th className="text-center px-4 py-3 font-medium text-slate-500">Stock</th>
-                      <th className="text-right px-4 py-3 font-medium text-slate-500">Precio</th>
+                      <th className="text-right px-4 py-3 font-medium text-slate-500">Lista</th>
+                      <th className="text-right px-4 py-3 font-medium text-slate-500">Efect.</th>
+                      <th className="text-right px-4 py-3 font-medium text-slate-500">Transf.</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -176,8 +178,14 @@ export default function ConsultarStockSucursales() {
                             {p.stock}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-right text-slate-900 font-medium">
+                        <td className="px-4 py-3 text-right text-slate-900 font-medium tabular-nums">
                           ${Number(p.precio_venta).toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3 text-right text-slate-700 tabular-nums">
+                          ${Number(p.precio_efectivo ?? 0).toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3 text-right text-slate-700 tabular-nums">
+                          ${Number(p.precio_transferencia ?? 0).toLocaleString()}
                         </td>
                       </tr>
                     ))}

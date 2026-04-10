@@ -64,6 +64,8 @@ class Product(db.Entity):
     precio_costo = Required(float)
     precio_venta = Required(float)
     precio_et = Optional(float, default=0)
+    precio_efectivo = Optional(float, default=0)
+    precio_transferencia = Optional(float, default=0)
     stock = Required(int, default=0)
     stock_minimo = Required(int, default=0)
     ventas = Set("VentaProducto")

@@ -19,7 +19,8 @@ export default function ProductForm() {
 
   const [stockInitial, setStockInitial] = useState("");
   const [stockMin, setStockMin] = useState("");
-  const [priceET, setPriceET] = useState("");
+  const [priceEfectivo, setPriceEfectivo] = useState("");
+  const [priceTransferencia, setPriceTransferencia] = useState("");
   const [priceSale, setPriceSale] = useState("");
   const [priceCost, setPriceCost] = useState("0");
   const [loading, setLoading] = useState(false);
@@ -126,21 +127,26 @@ export default function ProductForm() {
       return;
     }
 
-    console.log("Datos a enviar:", {
-      codigo: code,
-      nombre: name,
-      categoria_id: categoriaId,
-      color_id: colorIdNum,
-      talle: talle, 
-      stock: stockInitial,
-      stock_minimo: stockMin,
-      precio_et: priceET,
-      precio_venta: priceSale,
-      precio_costo: esEmpleado ? 0 : (priceCost === "" ? 0 : Number(priceCost)),
-    });
-
     const sid = sucursalParaApi;
     const costoEnviar = esEmpleado ? 0 : (priceCost === "" ? 0 : Number(priceCost));
+    const pe =
+      priceEfectivo === "" || priceEfectivo === null
+        ? NaN
+        : Number(priceEfectivo);
+    const pt =
+      priceTransferencia === "" || priceTransferencia === null
+        ? NaN
+        : Number(priceTransferencia);
+    if (!Number.isFinite(pe) || pe <= 0) {
+      setError("Ingresá un precio efectivo mayor a 0.");
+      setLoading(false);
+      return;
+    }
+    if (!Number.isFinite(pt) || pt <= 0) {
+      setError("Ingresá un precio transferencia mayor a 0.");
+      setLoading(false);
+      return;
+    }
     try {
       const response = await axios.post(
         `${API_URL}/products/register`,
@@ -154,7 +160,9 @@ export default function ProductForm() {
           talle: talle,
           stock: stockInitial,
           stock_minimo: stockMin,
-          precio_et: priceET,
+          precio_et: 0,
+          precio_efectivo: pe,
+          precio_transferencia: pt,
           precio_venta: priceSale,
           precio_costo: costoEnviar,
         },
@@ -377,19 +385,7 @@ export default function ProductForm() {
             </div>
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Precio E/T
-              </label>
-              <input
-                type="number"
-                value={priceET}
-                onChange={(e) => setPriceET(e.target.value)}
-                className="w-full px-3 py-2 border rounded-md"
-                required
-              />
-            </div>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Precio Venta
+                Precio venta (tarjeta / lista)
               </label>
               <input
                 type="number"
@@ -397,6 +393,36 @@ export default function ProductForm() {
                 onChange={(e) => setPriceSale(e.target.value)}
                 className="w-full px-3 py-2 border rounded-md"
                 required
+                min={0}
+                step="0.01"
+              />
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Precio efectivo
+              </label>
+              <input
+                type="number"
+                value={priceEfectivo}
+                onChange={(e) => setPriceEfectivo(e.target.value)}
+                className="w-full px-3 py-2 border rounded-md"
+                required
+                min={0}
+                step="0.01"
+              />
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Precio transferencia
+              </label>
+              <input
+                type="number"
+                value={priceTransferencia}
+                onChange={(e) => setPriceTransferencia(e.target.value)}
+                className="w-full px-3 py-2 border rounded-md"
+                required
+                min={0}
+                step="0.01"
               />
             </div>
             <div className="mb-6">

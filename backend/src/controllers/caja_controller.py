@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 from pydantic import BaseModel
 
+from src import schemas
 from src.controllers.auth_controller import get_current_user, get_sucursal_id_for_user
 from src.services.caja_services import CajaDiariaServices
 from src.services.reportes_services import ReportService
@@ -20,11 +21,6 @@ class RegisterMessage(BaseModel):
     success: bool
 
 
-class AbrirCajaRequest(BaseModel):
-    saldo_inicial: float
-    fecha: Optional[date] = None
-
-
 class EgresoManualRequest(BaseModel):
     monto: float
     descripcion: str
@@ -33,7 +29,7 @@ class EgresoManualRequest(BaseModel):
 
 @router.post("/abrir", response_model=RegisterMessage)
 def abrir_caja(
-    data: AbrirCajaRequest,
+    data: schemas.AbrirCajaRequest,
     sucursal_id: Optional[int] = Query(None),
     current_user=Depends(get_current_user),
 ):

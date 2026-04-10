@@ -4,6 +4,7 @@ from pony.orm import db_session
 from fastapi import HTTPException
 from src import models, schemas
 from src.db import db
+from src.services.precio_producto import precio_transferencia_desde_et_o_explicito
 
 
 def _generar_codigo_unico():
@@ -222,6 +223,11 @@ class SucursalServices:
                     precio_costo=producto_origen.precio_costo,
                     precio_venta=producto_origen.precio_venta,
                     precio_et=producto_origen.precio_et or 0,
+                    precio_efectivo=getattr(producto_origen, "precio_efectivo", None) or 0,
+                    precio_transferencia=precio_transferencia_desde_et_o_explicito(
+                        float(producto_origen.precio_et or 0),
+                        float(getattr(producto_origen, "precio_transferencia", None) or 0),
+                    ),
                     stock=cantidad,
                     stock_minimo=producto_origen.stock_minimo,
                 )
