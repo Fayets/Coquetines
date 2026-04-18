@@ -1,0 +1,28 @@
+# Si el frontend está en la carpeta "frontend" del repo, usa base = "frontend"
+# Si el frontend es la raíz del repo, cambia base = "frontend" por base = "."
+[build]
+  base = "frontend"
+  command = "npm run build"
+  publish = "dist"
+
+# Redirecciones para SPA (React Router)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Headers para MIME types correctos (evita application/octet-stream)
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Content-Type = "application/javascript; charset=utf-8"
+
+[[headers]]
+  for = "/*.mjs"
+  [headers.values]
+    Content-Type = "application/javascript; charset=utf-8"
+
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    Content-Type = "text/css; charset=utf-8"
