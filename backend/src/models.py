@@ -15,6 +15,8 @@ class Sucursal(db.Entity):
     nombre = Required(str)
     direccion = Optional(str)
     activo = Required(bool, default=True)
+    es_tienda_online = Optional(bool, default=False)
+    sucursal_stock_id = Optional(int)
     usuarios = Set("User")
     productos = Set("Product")
     ventas = Set("Venta")

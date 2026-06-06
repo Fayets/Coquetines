@@ -18,6 +18,8 @@ export default function Configuracion() {
   const [deletingSucursalId, setDeletingSucursalId] = useState(null);
   const [nuevaSucursalNombre, setNuevaSucursalNombre] = useState("");
   const [nuevaSucursalDireccion, setNuevaSucursalDireccion] = useState("");
+  const [nuevaSucursalEsOnline, setNuevaSucursalEsOnline] = useState(false);
+  const [nuevaSucursalStockId, setNuevaSucursalStockId] = useState("");
   const [error, setError] = useState(null);
   const token = getToken();
   const isAuthenticated = useAuth();
@@ -130,17 +132,31 @@ export default function Configuracion() {
       Swal.fire("Faltan datos", "El nombre de la sucursal es obligatorio.", "warning");
       return;
     }
+    if (nuevaSucursalEsOnline && !nuevaSucursalStockId) {
+      Swal.fire("Faltan datos", "Seleccioná la sucursal de stock para la tienda online.", "warning");
+      return;
+    }
     setCreatingSucursal(true);
+    const payload = {
+      nombre,
+      direccion: nuevaSucursalDireccion.trim() || undefined,
+      es_tienda_online: nuevaSucursalEsOnline,
+    };
+    if (nuevaSucursalEsOnline) {
+      payload.sucursal_stock_id = parseInt(nuevaSucursalStockId, 10);
+    }
     axios
       .post(
         `${API_URL}/sucursales/`,
-        { nombre, direccion: nuevaSucursalDireccion.trim() || undefined },
+        payload,
         { headers: { Authorization: `Bearer ${token}` } }
       )
       .then(() => {
         Swal.fire("Listo", "Sucursal creada correctamente.", "success");
         setNuevaSucursalNombre("");
         setNuevaSucursalDireccion("");
+        setNuevaSucursalEsOnline(false);
+        setNuevaSucursalStockId("");
         fetchSucursales();
       })
       .catch((err) => {
@@ -368,6 +384,45 @@ export default function Configuracion() {
                   />
                 </div>
               </div>
+              <div className="mb-3">
+                <label className="inline-flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={nuevaSucursalEsOnline}
+                    onChange={(e) => {
+                      setNuevaSucursalEsOnline(e.target.checked);
+                      if (!e.target.checked) setNuevaSucursalStockId("");
+                    }}
+                    disabled={creatingSucursal}
+                    className="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                  />
+                  ¿Es tienda online?
+                </label>
+              </div>
+              {nuevaSucursalEsOnline && (
+                <div className="mb-3">
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Sucursal de stock *</label>
+                  <select
+                    value={nuevaSucursalStockId}
+                    onChange={(e) => setNuevaSucursalStockId(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                    disabled={creatingSucursal}
+                    required
+                  >
+                    <option value="">Seleccionar sucursal física</option>
+                    {sucursales
+                      .filter((s) => s.activo && !s.es_tienda_online)
+                      .map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.nombre}
+                        </option>
+                      ))}
+                  </select>
+                  <p className="text-xs text-slate-500 mt-1">
+                    El stock de las ventas online se descontará de esta sucursal.
+                  </p>
+                </div>
+              )}
               <button
                 type="submit"
                 disabled={creatingSucursal || !nuevaSucursalNombre.trim()}
@@ -403,6 +458,14 @@ export default function Configuracion() {
                       >
                         {s.activo ? "Activa" : "Inactiva"}
                       </span>
+                      {s.es_tienda_online && (
+                        <span className="inline-block mt-1 ml-1 text-xs px-2 py-0.5 rounded bg-violet-100 text-violet-700">
+                          Tienda online
+                          {s.sucursal_stock_id
+                            ? ` → stock: ${sucursales.find((x) => x.id === s.sucursal_stock_id)?.nombre || `#${s.sucursal_stock_id}`}`
+                            : ""}
+                        </span>
+                      )}
                     </div>
                     {s.nombre !== "Sucursal Principal" && (
                       <button

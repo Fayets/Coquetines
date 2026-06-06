@@ -23,6 +23,17 @@ def _generar_codigo_unico():
     )
 
 
+def _sucursal_to_dict(s) -> dict:
+    return {
+        "id": int(s.id),
+        "nombre": s.nombre,
+        "direccion": s.direccion or "",
+        "activo": s.activo,
+        "es_tienda_online": bool(getattr(s, "es_tienda_online", False) or False),
+        "sucursal_stock_id": getattr(s, "sucursal_stock_id", None),
+    }
+
+
 class SucursalServices:
     def __init__(self):
         pass
@@ -63,30 +74,14 @@ class SucursalServices:
                 if solo_activas:
                     q = q.filter(lambda s: s.activo)
                 sucursales = list(q)
-                return [
-                    {
-                        "id": s.id,
-                        "nombre": s.nombre,
-                        "direccion": s.direccion or "",
-                        "activo": s.activo,
-                    }
-                    for s in sucursales
-                ]
+                return [_sucursal_to_dict(s) for s in sucursales]
             except Exception as e:
                 print(f"Error al listar sucursales: {e}")
                 # Fallback: si falla el filtro por `activo` (por diferencias de esquema en BD),
                 # igual intentamos listar sucursales sin filtrar y marcándolas como activas.
                 try:
                     sucursales = list(models.Sucursal.select())
-                    return [
-                        {
-                            "id": s.id,
-                            "nombre": s.nombre,
-                            "direccion": s.direccion or "",
-                            "activo": True,
-                        }
-                        for s in sucursales
-                    ]
+                    return [_sucursal_to_dict(s) for s in sucursales]
                 except Exception as e2:
                     raise HTTPException(
                         status_code=500,
@@ -102,28 +97,38 @@ class SucursalServices:
             s = models.Sucursal.get(id=sucursal_id)
             if not s:
                 raise HTTPException(status_code=404, detail="Sucursal no encontrada")
-            return {
-                "id": s.id,
-                "nombre": s.nombre,
-                "direccion": s.direccion or "",
-                "activo": s.activo,
-            }
+            return _sucursal_to_dict(s)
 
     def create(self, data: schemas.SucursalCreate) -> dict:
         with db_session:
             try:
+                es_online = bool(data.es_tienda_online)
+                stock_id = data.sucursal_stock_id
+                if es_online and stock_id is None:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Las tiendas online deben indicar la sucursal de stock.",
+                    )
+                if es_online and stock_id is not None:
+                    stock_suc = models.Sucursal.get(id=int(stock_id))
+                    if not stock_suc:
+                        raise HTTPException(status_code=404, detail="Sucursal de stock no encontrada")
+                    if bool(getattr(stock_suc, "es_tienda_online", False)):
+                        raise HTTPException(
+                            status_code=400,
+                            detail="La sucursal de stock debe ser una sucursal física.",
+                        )
                 sucursal = models.Sucursal(
                     nombre=data.nombre,
                     direccion=data.direccion or "",
                     activo=True,
+                    es_tienda_online=es_online,
+                    sucursal_stock_id=int(stock_id) if stock_id is not None else None,
                 )
-                db.flush()  # así el id está asignado antes de devolver
-                return {
-                    "id": int(sucursal.id),
-                    "nombre": sucursal.nombre,
-                    "direccion": sucursal.direccion or "",
-                    "activo": sucursal.activo,
-                }
+                db.flush()
+                return _sucursal_to_dict(sucursal)
+            except HTTPException:
+                raise
             except Exception as e:
                 print(f"Error al crear sucursal: {e}")
                 raise HTTPException(status_code=500, detail="Error al crear sucursal.")
@@ -135,6 +140,24 @@ class SucursalServices:
                 raise HTTPException(status_code=404, detail="Sucursal no encontrada")
             s.nombre = data.nombre
             s.direccion = data.direccion or ""
+            es_online = bool(data.es_tienda_online)
+            stock_id = data.sucursal_stock_id
+            if es_online and stock_id is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Las tiendas online deben indicar la sucursal de stock.",
+                )
+            if es_online and stock_id is not None:
+                stock_suc = models.Sucursal.get(id=int(stock_id))
+                if not stock_suc:
+                    raise HTTPException(status_code=404, detail="Sucursal de stock no encontrada")
+                if bool(getattr(stock_suc, "es_tienda_online", False)):
+                    raise HTTPException(
+                        status_code=400,
+                        detail="La sucursal de stock debe ser una sucursal física.",
+                    )
+            s.es_tienda_online = es_online
+            s.sucursal_stock_id = int(stock_id) if stock_id is not None else None
             return {"message": "Sucursal actualizada correctamente"}
 
     def delete(self, sucursal_id: int) -> dict:

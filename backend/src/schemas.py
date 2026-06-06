@@ -61,12 +61,16 @@ class TokenVerificationRequest(BaseModel):
 class SucursalCreate(BaseModel):
     nombre: str
     direccion: Optional[str] = None
+    es_tienda_online: Optional[bool] = False
+    sucursal_stock_id: Optional[int] = None
 
 class SucursalResponse(BaseModel):
     id: int
     nombre: str
     direccion: Optional[str] = None
     activo: bool
+    es_tienda_online: Optional[bool] = False
+    sucursal_stock_id: Optional[int] = None
 
     class Config:
         from_attributes = True

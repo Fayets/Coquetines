@@ -7,6 +7,7 @@ from src.db_migrations import (
     ensure_ventas_pagos_y_tipo_precio_linea,
     ensure_movimientos_caja_pago_mixto_column,
     ensure_caja_diaria_turno_y_unique,
+    ensure_sucursal_tienda_online_columns,
 )
 from pony.orm import *
 from fastapi import FastAPI
@@ -33,6 +34,7 @@ ensure_products_precios_contado_columns()
 ensure_ventas_pagos_y_tipo_precio_linea()
 ensure_movimientos_caja_pago_mixto_column()
 ensure_caja_diaria_turno_y_unique()
+ensure_sucursal_tienda_online_columns()
 
 # Mapeando las entidades a tablas (si no existe la tabla, la crea)
 print("[startup] Conectando DB y generando mapping...")

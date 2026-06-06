@@ -26,7 +26,7 @@ class WooVentaProductoItem(BaseModel):
 
 
 class WooVentaRequest(BaseModel):
-    sucursal_id: int
+    sucursal_id: int | None = None
     cliente: str = Field(..., min_length=1)
     metodo_pago: str = Field(..., min_length=1)
     productos: list[WooVentaProductoItem] = Field(..., min_length=1)

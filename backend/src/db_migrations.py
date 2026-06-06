@@ -367,3 +367,61 @@ def _sqlite_caja_diaria_turno() -> None:
         cur.close()
     finally:
         conn.close()
+
+
+def ensure_sucursal_tienda_online_columns() -> None:
+    """Asegura es_tienda_online y sucursal_stock_id en Sucursales (idempotente)."""
+    provider = (config("DB_PROVIDER", default="") or "").strip().lower()
+    if provider in ("postgres", "postgresql"):
+        _postgres_add_sucursal_tienda_online_columns()
+    elif provider == "sqlite":
+        _sqlite_add_sucursal_tienda_online_columns()
+
+
+def _postgres_add_sucursal_tienda_online_columns() -> None:
+    import psycopg2
+
+    conn = psycopg2.connect(
+        user=config("DB_USER"),
+        password=config("DB_PASS"),
+        host=config("DB_HOST"),
+        dbname=config("DB_NAME"),
+        connect_timeout=15,
+    )
+    try:
+        conn.autocommit = True
+        cur = conn.cursor()
+        cur.execute(
+            'ALTER TABLE "Sucursales" ADD COLUMN IF NOT EXISTS es_tienda_online BOOLEAN NOT NULL DEFAULT false'
+        )
+        cur.execute(
+            'ALTER TABLE "Sucursales" ADD COLUMN IF NOT EXISTS sucursal_stock_id INTEGER'
+        )
+        cur.close()
+        print("[startup] Columnas Sucursales.es_tienda_online / sucursal_stock_id verificadas (PostgreSQL).")
+    finally:
+        conn.close()
+
+
+def _sqlite_add_sucursal_tienda_online_columns() -> None:
+    import sqlite3
+
+    path = config("DB_NAME")
+    conn = sqlite3.connect(path)
+    try:
+        cur = conn.cursor()
+        for sql in (
+            "ALTER TABLE Sucursales ADD COLUMN es_tienda_online INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE Sucursales ADD COLUMN sucursal_stock_id INTEGER",
+        ):
+            try:
+                cur.execute(sql)
+                conn.commit()
+            except sqlite3.OperationalError as e:
+                conn.rollback()
+                if "duplicate column" not in str(e).lower():
+                    raise
+        cur.close()
+        print("[startup] Columnas Sucursales.es_tienda_online / sucursal_stock_id verificadas (SQLite).")
+    finally:
+        conn.close()
