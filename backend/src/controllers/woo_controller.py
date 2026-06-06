@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, Field
 
 from src.controllers.auth_controller import get_admin_user
-from src.services.woo_services import WooServices
+from src.services.woo_services import WooServices, _UNSET
 
 WOO_API_KEY = (config("WOO_API_KEY", default="") or "").strip()
 
@@ -45,12 +45,21 @@ class WooProductoItem(BaseModel):
     precio_venta: float
     precio_efectivo: float
     precio_transferencia: float
+    precio_tipo: str
+    precio_base: float
+    markup_aplicado: float
+    precio: float
 
 
 class WooVentaResponse(BaseModel):
     message: str
     success: bool
     venta_id: int | None = None
+
+
+class WooTiendaConfigItem(BaseModel):
+    markup_web: float
+    precio_tipo_web: str
 
 
 class WooTiendaProductoAdminItem(BaseModel):
@@ -61,12 +70,56 @@ class WooTiendaProductoAdminItem(BaseModel):
     stock: int
     publicado: bool
     id: int | None = None
+    precio_venta: float
+    precio_efectivo: float
+    precio_transferencia: float
+    precio_et: float
+    precio_tipo: str | None = None
+    markup: float | None = None
+    markup_global: float
+    precio_tipo_global: str
+    precio_tipo_resuelto: str
+    precio_base: float
+    markup_aplicado: float
+    precio: float
+
+
+class WooTiendaProductosAdminResponse(BaseModel):
+    config: WooTiendaConfigItem
+    productos: list[WooTiendaProductoAdminItem]
 
 
 class WooTiendaProductoActionResponse(BaseModel):
     id: int
     producto_id: int
     activo: bool
+    message: str
+
+
+class WooTiendaConfigPatchRequest(BaseModel):
+    markup_web: float | None = None
+    precio_tipo_web: str | None = None
+
+
+class WooTiendaConfigPatchResponse(BaseModel):
+    sucursal_tienda_id: int
+    markup_web: float
+    precio_tipo_web: str
+    message: str
+
+
+class WooTiendaProductoPatchRequest(BaseModel):
+    precio_tipo: str | None = None
+    markup: float | None = None
+
+
+class WooTiendaProductoPatchResponse(BaseModel):
+    producto_id: int
+    precio_tipo: str | None = None
+    markup: float | None = None
+    precio_base: float
+    markup_aplicado: float
+    precio: float
     message: str
 
 
@@ -100,7 +153,34 @@ def registrar_venta(body: WooVentaRequest):
         raise HTTPException(status_code=500, detail=f"Error al registrar la venta: {str(e)}")
 
 
-@router.get("/tienda/productos", response_model=list[WooTiendaProductoAdminItem])
+@router.get("/tienda/config", response_model=WooTiendaConfigItem)
+def get_tienda_config(current_user=Depends(get_admin_user)):
+    try:
+        cfg = service.get_tienda_config()
+        return {
+            "markup_web": cfg["markup_web"],
+            "precio_tipo_web": cfg["precio_tipo_web"],
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al obtener configuración de tienda: {str(e)}")
+
+
+@router.patch("/tienda/config", response_model=WooTiendaConfigPatchResponse)
+def patch_tienda_config(body: WooTiendaConfigPatchRequest, current_user=Depends(get_admin_user)):
+    try:
+        return service.update_tienda_config(
+            markup_web=body.markup_web,
+            precio_tipo_web=body.precio_tipo_web,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al actualizar configuración de tienda: {str(e)}")
+
+
+@router.get("/tienda/productos", response_model=WooTiendaProductosAdminResponse)
 def list_tienda_productos_admin(current_user=Depends(get_admin_user)):
     try:
         return service.list_tienda_productos_admin()
@@ -108,6 +188,25 @@ def list_tienda_productos_admin(current_user=Depends(get_admin_user)):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al listar productos de tienda: {str(e)}")
+
+
+@router.patch("/tienda/productos/{producto_id}", response_model=WooTiendaProductoPatchResponse)
+def patch_producto_tienda(
+    producto_id: int,
+    body: WooTiendaProductoPatchRequest,
+    current_user=Depends(get_admin_user),
+):
+    try:
+        payload = body.model_dump(exclude_unset=True)
+        return service.update_producto_tienda(
+            producto_id,
+            precio_tipo=payload.get("precio_tipo"),
+            markup=payload["markup"] if "markup" in payload else _UNSET,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al actualizar producto de tienda: {str(e)}")
 
 
 @router.post("/tienda/productos/{producto_id}", response_model=WooTiendaProductoActionResponse, status_code=201)

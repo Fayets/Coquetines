@@ -17,6 +17,8 @@ class Sucursal(db.Entity):
     activo = Required(bool, default=True)
     es_tienda_online = Optional(bool, default=False)
     sucursal_stock_id = Optional(int)
+    markup_web = Optional(float, default=0)
+    precio_tipo_web = Optional(str, default="precio_venta")
     usuarios = Set("User")
     productos = Set("Product")
     ventas = Set("Venta")
@@ -85,6 +87,8 @@ class TiendaOnlineProducto(db.Entity):
     sucursal_tienda = Required("Sucursal", column="sucursal_tienda_id")
     producto = Required("Product", column="producto_id")
     activo = Required(bool, default=True)
+    precio_tipo = Optional(str, default="precio_venta")
+    markup = Optional(float)
     composite_key(sucursal_tienda, producto)
     _table_ = "Tienda_Online_Productos"
 

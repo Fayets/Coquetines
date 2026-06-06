@@ -425,3 +425,95 @@ def _sqlite_add_sucursal_tienda_online_columns() -> None:
         print("[startup] Columnas Sucursales.es_tienda_online / sucursal_stock_id verificadas (SQLite).")
     finally:
         conn.close()
+
+
+def ensure_tienda_online_markup_columns() -> None:
+    """Asegura markup_web / precio_tipo_web en Sucursales y precio_tipo / markup en Tienda_Online_Productos."""
+    provider = (config("DB_PROVIDER", default="") or "").strip().lower()
+    if provider in ("postgres", "postgresql"):
+        _postgres_tienda_online_markup_columns()
+    elif provider == "sqlite":
+        _sqlite_tienda_online_markup_columns()
+
+
+def _postgres_tienda_online_markup_columns() -> None:
+    import psycopg2
+
+    conn = psycopg2.connect(
+        user=config("DB_USER"),
+        password=config("DB_PASS"),
+        host=config("DB_HOST"),
+        dbname=config("DB_NAME"),
+        connect_timeout=15,
+    )
+    try:
+        conn.autocommit = True
+        cur = conn.cursor()
+        cur.execute(
+            'ALTER TABLE "Sucursales" ADD COLUMN IF NOT EXISTS markup_web DOUBLE PRECISION DEFAULT 0'
+        )
+        cur.execute(
+            'ALTER TABLE "Sucursales" ADD COLUMN IF NOT EXISTS precio_tipo_web VARCHAR DEFAULT \'precio_venta\''
+        )
+        cur.execute(
+            """
+            SELECT 1 FROM information_schema.tables
+            WHERE table_schema = 'public' AND table_name = 'Tienda_Online_Productos'
+            """
+        )
+        if cur.fetchone():
+            cur.execute(
+                'ALTER TABLE "Tienda_Online_Productos" ADD COLUMN IF NOT EXISTS precio_tipo VARCHAR DEFAULT \'precio_venta\''
+            )
+            cur.execute(
+                'ALTER TABLE "Tienda_Online_Productos" ADD COLUMN IF NOT EXISTS markup DOUBLE PRECISION'
+            )
+        cur.close()
+        print(
+            "[startup] Columnas Sucursales.markup_web / precio_tipo_web y "
+            "Tienda_Online_Productos.precio_tipo / markup verificadas (PostgreSQL)."
+        )
+    finally:
+        conn.close()
+
+
+def _sqlite_tienda_online_markup_columns() -> None:
+    import sqlite3
+
+    path = config("DB_NAME")
+    conn = sqlite3.connect(path)
+    try:
+        cur = conn.cursor()
+        for sql in (
+            "ALTER TABLE Sucursales ADD COLUMN markup_web REAL DEFAULT 0",
+            "ALTER TABLE Sucursales ADD COLUMN precio_tipo_web TEXT DEFAULT 'precio_venta'",
+        ):
+            try:
+                cur.execute(sql)
+                conn.commit()
+            except sqlite3.OperationalError as e:
+                conn.rollback()
+                if "duplicate column" not in str(e).lower():
+                    raise
+        cur.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='Tienda_Online_Productos'"
+        )
+        if cur.fetchone():
+            for sql in (
+                "ALTER TABLE Tienda_Online_Productos ADD COLUMN precio_tipo TEXT DEFAULT 'precio_venta'",
+                "ALTER TABLE Tienda_Online_Productos ADD COLUMN markup REAL",
+            ):
+                try:
+                    cur.execute(sql)
+                    conn.commit()
+                except sqlite3.OperationalError as e:
+                    conn.rollback()
+                    if "duplicate column" not in str(e).lower():
+                        raise
+        cur.close()
+        print(
+            "[startup] Columnas Sucursales.markup_web / precio_tipo_web y "
+            "Tienda_Online_Productos.precio_tipo / markup verificadas (SQLite)."
+        )
+    finally:
+        conn.close()
