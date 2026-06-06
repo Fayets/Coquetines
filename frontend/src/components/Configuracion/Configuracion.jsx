@@ -46,7 +46,6 @@ export default function Configuracion() {
     lastName: "",
     password: "",
   });
-
   const fetchSucursales = () => {
     if (!token || !esOwner) return;
     axios

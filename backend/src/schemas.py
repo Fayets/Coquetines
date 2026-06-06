@@ -75,6 +75,18 @@ class SucursalResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class TiendaOnlineProductoCreate(BaseModel):
+    sucursal_tienda_id: int
+    producto_id: int
+
+class TiendaOnlineProductoResponse(BaseModel):
+    id: int
+    producto_id: int
+    activo: bool
+
+    class Config:
+        from_attributes = True
+
 class TransferenciaStockRequest(BaseModel):
     sucursal_origen_id: int
     sucursal_destino_id: int

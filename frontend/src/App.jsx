@@ -32,6 +32,7 @@ import Configuracion from "./components/Configuracion/Configuracion";
 import TransferirStock from "./components/Transferencia/TransferirStock";
 import GenerarCodigosBarra from "./components/CodigosBarra/GenerarCodigosBarra";
 import ConsultarStockSucursales from "./components/Inventario/ConsultarStockSucursales";
+import GestionProductosWeb from "./components/TiendaWeb/GestionProductosWeb";
 
 function App() {
   return (
@@ -70,6 +71,7 @@ function App() {
           <Route path="transferir-stock" element={<TransferirStock />} />
           <Route path="codigos-barra" element={<GenerarCodigosBarra />} />
           <Route path="consultar-stock" element={<ConsultarStockSucursales />} />
+          <Route path="tienda-web/productos" element={<GestionProductosWeb />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

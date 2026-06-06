@@ -25,6 +25,7 @@ class Sucursal(db.Entity):
     clientes = Set("Cliente")
     cambios_venta = Set("CambioVenta")
     notas_credito = Set("NotaCredito")
+    tienda_online_productos = Set("TiendaOnlineProducto", reverse="sucursal_tienda")
     _table_ = "Sucursales"
 
 # Modelo de usuario (sucursal_id es None para OWNER/dueña)
@@ -75,7 +76,17 @@ class Product(db.Entity):
     ingresos_stock = Set("IngresoStock")
     cambios_venta_devuelto = Set("CambioVenta", reverse="producto_devuelto")
     cambios_venta_nuevo = Set("CambioVenta", reverse="producto_nuevo")
+    tienda_online_productos = Set("TiendaOnlineProducto", reverse="producto")
     _table_ = "Products"
+
+
+class TiendaOnlineProducto(db.Entity):
+    id = PrimaryKey(int, auto=True)
+    sucursal_tienda = Required("Sucursal", column="sucursal_tienda_id")
+    producto = Required("Product", column="producto_id")
+    activo = Required(bool, default=True)
+    composite_key(sucursal_tienda, producto)
+    _table_ = "Tienda_Online_Productos"
 
 
 # Registro de reposición / ingreso de stock (sin crear códigos nuevos)

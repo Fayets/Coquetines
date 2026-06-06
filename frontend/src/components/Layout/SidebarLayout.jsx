@@ -23,10 +23,13 @@ import {
   SearchCheck,
   Palette,
   History,
+  Globe,
 } from "lucide-react";
 import logo from "../../images/logo.png";
-import { getUser } from "../../utils/sucursal";
+import { getUser, getToken } from "../../utils/sucursal";
 import { clearAuth } from "../../utils/authStorage";
+import { API_URL } from "../../utils/api";
+import axios from "axios";
 
 const ventasChildren = (esOwner, role) => {
   if (esOwner)
@@ -148,10 +151,6 @@ export default function SidebarLayout() {
   const location = useLocation();
   const user = getUser();
   const esOwner = user.role === "OWNER";
-  const navStructureWithTransfer = [
-    ...navStructure(esOwner, user.role),
-    ...(esOwner ? [{ path: "/transferir-stock", icon: Truck, label: "Transferir stock" }] : []),
-  ];
   const [expanded, setExpanded] = useState(() => {
     const path = location.pathname;
     if (path.includes("ventas")) return "/ventas";
@@ -160,6 +159,38 @@ export default function SidebarLayout() {
     if (path.includes("Clientes") || path.includes("clientes") || path.includes("NuevoCliente") || path.includes("EditarCliente")) return "/Clientes";
     return null;
   });
+  const [mostrarTiendaWeb, setMostrarTiendaWeb] = useState(false);
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    if (user.role === "EMPLEADO") {
+      setMostrarTiendaWeb(false);
+      return;
+    }
+    axios
+      .get(`${API_URL}/sucursales/`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => {
+        const list = Array.isArray(res.data) ? res.data : [];
+        const tiendas = list.filter((s) => s.es_tienda_online && s.activo);
+        if (user.role === "OWNER") {
+          setMostrarTiendaWeb(tiendas.length > 0);
+        } else if (user.role === "ADMIN" && user.sucursal_id != null) {
+          setMostrarTiendaWeb(tiendas.some((s) => s.id === user.sucursal_id));
+        } else {
+          setMostrarTiendaWeb(false);
+        }
+      })
+      .catch(() => setMostrarTiendaWeb(false));
+  }, [user.role, user.sucursal_id]);
+
+  const navStructureWithTransfer = [
+    ...navStructure(esOwner, user.role),
+    ...(mostrarTiendaWeb
+      ? [{ path: "/tienda-web/productos", icon: Globe, label: "Productos web" }]
+      : []),
+    ...(esOwner ? [{ path: "/transferir-stock", icon: Truck, label: "Transferir stock" }] : []),
+  ];
 
   useEffect(() => {
     const path = location.pathname;
@@ -204,6 +235,7 @@ export default function SidebarLayout() {
     if (path === "/transferir-stock") return location.pathname === "/transferir-stock";
     if (path === "/codigos-barra") return location.pathname === "/codigos-barra";
     if (path === "/consultar-stock") return location.pathname === "/consultar-stock";
+    if (path === "/tienda-web/productos") return location.pathname === "/tienda-web/productos";
     return location.pathname === path || location.pathname.startsWith(path + "/");
   };
 

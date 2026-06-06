@@ -4,6 +4,7 @@ from decouple import config
 from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, Field
 
+from src.controllers.auth_controller import get_admin_user
 from src.services.woo_services import WooServices
 
 WOO_API_KEY = (config("WOO_API_KEY", default="") or "").strip()
@@ -14,7 +15,7 @@ async def verify_woo_api_key(x_api_key: str = Header(..., alias="X-API-Key")):
         raise HTTPException(status_code=401, detail="API key inválida o ausente")
 
 
-router = APIRouter(dependencies=[Depends(verify_woo_api_key)])
+router = APIRouter()
 service = WooServices()
 
 
@@ -52,7 +53,24 @@ class WooVentaResponse(BaseModel):
     venta_id: int | None = None
 
 
-@router.get("/productos", response_model=list[WooProductoItem])
+class WooTiendaProductoAdminItem(BaseModel):
+    producto_id: int
+    codigo: str
+    nombre: str
+    talle: str
+    stock: int
+    publicado: bool
+    id: int | None = None
+
+
+class WooTiendaProductoActionResponse(BaseModel):
+    id: int
+    producto_id: int
+    activo: bool
+    message: str
+
+
+@router.get("/productos", response_model=list[WooProductoItem], dependencies=[Depends(verify_woo_api_key)])
 def list_productos():
     try:
         return service.list_productos()
@@ -62,7 +80,7 @@ def list_productos():
         raise HTTPException(status_code=500, detail=f"Error al obtener productos: {str(e)}")
 
 
-@router.post("/venta", response_model=WooVentaResponse, status_code=201)
+@router.post("/venta", response_model=WooVentaResponse, status_code=201, dependencies=[Depends(verify_woo_api_key)])
 def registrar_venta(body: WooVentaRequest):
     try:
         result = service.crear_venta(
@@ -80,3 +98,33 @@ def registrar_venta(body: WooVentaRequest):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al registrar la venta: {str(e)}")
+
+
+@router.get("/tienda/productos", response_model=list[WooTiendaProductoAdminItem])
+def list_tienda_productos_admin(current_user=Depends(get_admin_user)):
+    try:
+        return service.list_tienda_productos_admin()
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al listar productos de tienda: {str(e)}")
+
+
+@router.post("/tienda/productos/{producto_id}", response_model=WooTiendaProductoActionResponse, status_code=201)
+def publicar_producto_tienda(producto_id: int, current_user=Depends(get_admin_user)):
+    try:
+        return service.publicar_producto(producto_id)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al publicar producto: {str(e)}")
+
+
+@router.delete("/tienda/productos/{producto_id}", response_model=WooTiendaProductoActionResponse)
+def despublicar_producto_tienda(producto_id: int, current_user=Depends(get_admin_user)):
+    try:
+        return service.despublicar_producto(producto_id)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al despublicar producto: {str(e)}")
