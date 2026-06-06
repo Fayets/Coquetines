@@ -86,10 +86,11 @@ class WooServices:
         self._product_service = ProductServices()
         self._ventas_service = VentasServices()
 
-    def list_productos(self, sucursal_id: int) -> list[dict]:
+    def list_productos(self) -> list[dict]:
         sid = _get_tienda_online_sucursal_id()
+        stock_sid = _woo_stock_sucursal_id(sid)
         productos = self._product_service.get_all_products(
-            sucursal_id=int(sid),
+            sucursal_id=int(stock_sid),
             ocultar_costo=True,
         )
         resultado: list[dict] = []

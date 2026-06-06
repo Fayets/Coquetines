@@ -52,10 +52,10 @@ class WooVentaResponse(BaseModel):
     venta_id: int | None = None
 
 
-@router.get("/productos/{sucursal_id}", response_model=list[WooProductoItem])
-def list_productos(sucursal_id: int):
+@router.get("/productos", response_model=list[WooProductoItem])
+def list_productos():
     try:
-        return service.list_productos(sucursal_id)
+        return service.list_productos()
     except HTTPException:
         raise
     except Exception as e:
