@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+:root {
+  --color-primary: #0f766e;
+  --color-primary-hover: #0d9488;
+  --color-primary-light: #ccfbf1;
+  --color-sidebar: #0f172a;
+  --color-sidebar-hover: #1e293b;
+  --color-surface: #ffffff;
+  --color-background: #f8fafc;
+  --color-border: #e2e8f0;
+  --color-text: #0f172a;
+  --color-text-muted: #64748b;
+  --radius-card: 0.75rem;
+  --radius-input: 0.5rem;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-card-hover: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+@layer base {
+  * {
+    @apply border-slate-200;
+  }
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+  input, select, textarea {
+    @apply focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-colors;
+  }
+  button:focus-visible, a:focus-visible {
+    @apply outline-none ring-2 ring-teal-500 ring-offset-2;
+  }
+}
+
+/* Table styles */
+.table-professional {
+  @apply w-full text-sm text-left;
+}
+.table-professional thead {
+  @apply text-slate-500 uppercase tracking-wider text-xs font-semibold bg-slate-50/80;
+}
+.table-professional th {
+  @apply px-6 py-4 border-b border-slate-200;
+}
+.table-professional td {
+  @apply px-6 py-4 border-b border-slate-100;
+}
+.table-professional tbody tr {
+  @apply hover:bg-slate-50/50 transition-colors;
+}
