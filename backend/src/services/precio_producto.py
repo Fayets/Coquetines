@@ -35,6 +35,7 @@ def precio_transferencia_desde_et_o_explicito(precio_et: float, precio_transfere
 
 def obtener_precio_unitario(producto, metodo_pago: str) -> float:
     """
+    Web → precio_web → precio_venta (lo que la clienta vio en el catálogo)
     Efectivo → precio_efectivo → precio_et → precio_venta
     Transferencia → precio_transferencia → precio_venta (precio_et ya no interviene)
     Otros (tarjeta, débito, crédito, etc.) → precio_venta → precio_et
@@ -44,6 +45,14 @@ def obtener_precio_unitario(producto, metodo_pago: str) -> float:
     et = _as_float(getattr(producto, "precio_et", None))
     pe = _valor_o_cero(getattr(producto, "precio_efectivo", None))
     pt = _valor_o_cero(getattr(producto, "precio_transferencia", None))
+    pw = _valor_o_cero(getattr(producto, "precio_web", None))
+
+    # Se cobra lo que decía el catálogo. Si el producto no tiene precio web
+    # propio, el catálogo ya mostraba el de lista, así que ese se usa.
+    if mp == "web":
+        if pw != 0.0:
+            return float(pw)
+        return float(pv)
 
     if mp == "efectivo":
         if pe != 0.0:

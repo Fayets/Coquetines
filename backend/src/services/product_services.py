@@ -41,6 +41,10 @@ def _product_to_dict(product, ocultar_costo: bool = False):
             "precio_et": float(product.precio_et) if getattr(product, "precio_et", None) is not None else 0.0,
             "precio_efectivo": float(getattr(product, "precio_efectivo", None) or 0),
             "precio_transferencia": float(getattr(product, "precio_transferencia", None) or 0),
+            # Lo necesita la pantalla de venta para cotizar a precio Web al
+            # cerrar un pedido del catálogo.
+            "precio_web": float(getattr(product, "precio_web", None) or 0),
+            "publicado_web": bool(getattr(product, "publicado_web", False)),
             "stock": int(product.stock) if getattr(product, "stock", None) is not None else 0,
             "stock_minimo": int(product.stock_minimo) if getattr(product, "stock_minimo", None) is not None else 0,
         }

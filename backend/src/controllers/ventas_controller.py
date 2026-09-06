@@ -23,20 +23,29 @@ cambios_service = CambiosVentaServices()
 class RegisterMessage(BaseModel):
     message: str
     success: bool
+    # Lo usa el catálogo web para vincular el pedido con la venta que lo cerró.
+    venta_id: int | None = None
 
 @router.post("/register", response_model=RegisterMessage, status_code=201)
 def register_venta(venta: schemas.VentaCreate, current_user=Depends(get_current_user)):
-    if getattr(current_user, "role", None) == "OWNER":
-        raise HTTPException(
-            status_code=403,
-            detail="El rol dueña (OWNER) no puede registrar ventas. Solo puede ver estadísticas y gestionar sucursales.",
-        )
+    # La dueña también puede vender (cierra los pedidos del catálogo web), pero
+    # como no tiene sucursal propia está obligada a decir en cuál: la venta
+    # descuenta stock y entra en la caja diaria de esa sucursal.
     sid = get_sucursal_id_for_user(current_user, venta.sucursal_id)
     if sid is None:
+        if getattr(current_user, "role", None) == "OWNER":
+            raise HTTPException(
+                status_code=400,
+                detail="Elegí la sucursal desde la que sale la mercadería: la venta descuenta su stock y entra en su caja.",
+            )
         raise HTTPException(status_code=400, detail="Debe indicar sucursal (o tener una asignada).")
     try:
-        service.create_venta(venta, sucursal_id=sid)
-        return {"message": "Venta registrada correctamente", "success": True}
+        resultado = service.create_venta(venta, sucursal_id=sid)
+        return {
+            "message": "Venta registrada correctamente",
+            "success": True,
+            "venta_id": (resultado or {}).get("venta_id"),
+        }
     except HTTPException as e:
         raise e
     except Exception as e:

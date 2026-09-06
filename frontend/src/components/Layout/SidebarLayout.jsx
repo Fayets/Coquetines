@@ -24,9 +24,16 @@ import {
   Palette,
   History,
   Globe,
+  Store,
+  ClipboardList,
+  Images,
+  Upload,
 } from "lucide-react";
 import logo from "../../images/logo.png";
 import { getUser, getToken } from "../../utils/sucursal";
+import { puedeAccederTiendaWeb } from "../../utils/tiendaWeb";
+import { usePedidosNuevos } from "../../utils/pedidosWeb";
+import { puedeManejarCatalogo } from "../../utils/catalogoAdmin";
 import { clearAuth } from "../../utils/authStorage";
 import { API_URL } from "../../utils/api";
 import axios from "axios";
@@ -35,6 +42,8 @@ const ventasChildren = (esOwner, role) => {
   if (esOwner)
     return [
       { path: "/ventas", icon: List, label: "Listado" },
+      // La dueña también vende (cierra los pedidos del catálogo web).
+      { path: "/ventas/nueva", icon: PlusCircle, label: "Nueva Venta" },
       { path: "/ventas/reports", icon: BarChart2, label: "Reportes" },
       { path: "/ventas/cambios-historial", icon: History, label: "Historial de cambios" },
       { path: "/ventas/cierres", icon: Wallet, label: "Cierres de caja" },
@@ -91,60 +100,85 @@ const clientesChildren = (esOwner, role) => {
   ];
 };
 
-const navStructure = (esOwner, role) => [
-  { path: "/dashboard", icon: LayoutDashboard, label: "Inicio" },
-  {
-    path: "/stock",
-    icon: Package,
-    label: "Inventario",
-    children:
-      esOwner
-        ? [
-            { path: "/stock", icon: List, label: "Listado" },
-            { path: "/stock/new", icon: PlusCircle, label: "Nuevo Producto" },
-            { path: "/categorias", icon: Tags, label: "Categorías" },
-            { path: "/colores", icon: Palette, label: "Colores" },
-            { path: "/stock/reportes", icon: BarChart2, label: "Reportes" },
-          ]
-        : role === "EMPLEADO"
-          ? [
-              { path: "/stock", icon: List, label: "Listado" },
-              { path: "/stock/new", icon: PlusCircle, label: "Nuevo Producto" },
-              { path: "/categorias", icon: Tags, label: "Categorías" },
-              { path: "/colores", icon: Palette, label: "Colores" },
-            ]
-          : [
-              { path: "/stock", icon: List, label: "Listado" },
-              { path: "/stock/new", icon: PlusCircle, label: "Nuevo Producto" },
-              { path: "/categorias", icon: Tags, label: "Categorías" },
-              { path: "/colores", icon: Palette, label: "Colores" },
-              { path: "/stock/control", icon: AlertCircle, label: "Control" },
-              { path: "/stock/reportes", icon: BarChart2, label: "Reportes" },
-            ],
-  },
-  {
-    path: "/ventas",
-    icon: ShoppingBag,
-    label: "Ventas",
-    children: ventasChildren(esOwner, role),
-  },
-  {
-    path: "/Creditos",
-    icon: FileText,
-    label: "Créditos",
-    children: creditosChildren(esOwner, role),
-  },
-  ...(esOwner ? [] : [{ path: "/caja", icon: Wallet, label: "Caja diaria" }]),
-  {
-    path: "/Clientes",
-    icon: Users,
-    label: "Clientes",
-    children: clientesChildren(esOwner, role),
-  },
-  { path: "/codigos-barra", icon: Barcode, label: "Códigos de barra" },
-  { path: "/consultar-stock", icon: SearchCheck, label: "Stock sucursales" },
-  ...(role !== "EMPLEADO" ? [{ path: "/configuracion", icon: Settings, label: "Configuración" }] : []),
-];
+const navStructure = (esOwner, role, esTiendaOnline = false) => {
+  const inventarioChildren = () => {
+    if (esTiendaOnline) {
+      return [{ path: "/stock", icon: List, label: "Listado" }];
+    }
+    if (esOwner) {
+      return [
+        { path: "/stock", icon: List, label: "Listado" },
+        { path: "/stock/new", icon: PlusCircle, label: "Nuevo Producto" },
+        { path: "/categorias", icon: Tags, label: "Categorías" },
+        { path: "/colores", icon: Palette, label: "Colores" },
+        { path: "/stock/reportes", icon: BarChart2, label: "Reportes" },
+      ];
+    }
+    if (role === "EMPLEADO") {
+      return [
+        { path: "/stock", icon: List, label: "Listado" },
+        { path: "/stock/new", icon: PlusCircle, label: "Nuevo Producto" },
+        { path: "/categorias", icon: Tags, label: "Categorías" },
+        { path: "/colores", icon: Palette, label: "Colores" },
+      ];
+    }
+    return [
+      { path: "/stock", icon: List, label: "Listado" },
+      { path: "/stock/new", icon: PlusCircle, label: "Nuevo Producto" },
+      { path: "/categorias", icon: Tags, label: "Categorías" },
+      { path: "/colores", icon: Palette, label: "Colores" },
+      { path: "/stock/control", icon: AlertCircle, label: "Control" },
+      { path: "/stock/reportes", icon: BarChart2, label: "Reportes" },
+    ];
+  };
+
+  return [
+    { path: "/dashboard", icon: LayoutDashboard, label: "Inicio" },
+    {
+      path: "/stock",
+      icon: Package,
+      label: "Inventario",
+      children: inventarioChildren(),
+    },
+    {
+      path: "/ventas",
+      icon: ShoppingBag,
+      label: "Ventas",
+      children: ventasChildren(esOwner, role),
+    },
+    ...(esTiendaOnline
+      ? []
+      : [
+          {
+            path: "/Creditos",
+            icon: FileText,
+            label: "Créditos",
+            children: creditosChildren(esOwner, role),
+          },
+        ]),
+    ...(esOwner ? [] : [{ path: "/caja", icon: Wallet, label: "Caja diaria" }]),
+    {
+      path: "/Clientes",
+      icon: Users,
+      label: "Clientes",
+      children: clientesChildren(esOwner, role),
+    },
+    ...(esTiendaOnline
+      ? []
+      : [
+          { path: "/codigos-barra", icon: Barcode, label: "Códigos de barra" },
+          { path: "/consultar-stock", icon: SearchCheck, label: "Stock sucursales" },
+        ]),
+    ...(role !== "EMPLEADO" && !esTiendaOnline
+      ? [{ path: "/configuracion", icon: Settings, label: "Configuración" }]
+      : []),
+  ];
+};
+
+/** Suma los avisos de los hijos, para mostrarlos en el padre plegado. */
+function totalBadge(item) {
+  return (item.children || []).reduce((acc, c) => acc + (c.badge || 0), 0);
+}
 
 export default function SidebarLayout() {
   const navigate = useNavigate();
@@ -157,6 +191,8 @@ export default function SidebarLayout() {
     if (path.includes("stock") || path.includes("categorias") || path.includes("colores")) return "/stock";
     if (path.includes("Creditos") || path.includes("creditos")) return "/Creditos";
     if (path.includes("Clientes") || path.includes("clientes") || path.includes("NuevoCliente") || path.includes("EditarCliente")) return "/Clientes";
+    if (path.startsWith("/catalogo-web") || path.startsWith("/tienda-web/pedidos")) return "/catalogo-web";
+    if (path.startsWith("/tienda-web")) return "/tienda-web";
     return null;
   });
   const [mostrarTiendaWeb, setMostrarTiendaWeb] = useState(false);
@@ -164,8 +200,12 @@ export default function SidebarLayout() {
   useEffect(() => {
     const token = getToken();
     if (!token) return;
-    if (user.role === "EMPLEADO") {
+    if (user.role === "OWNER") {
       setMostrarTiendaWeb(false);
+      return;
+    }
+    if (user.es_tienda_online === true) {
+      setMostrarTiendaWeb(true);
       return;
     }
     axios
@@ -173,22 +213,59 @@ export default function SidebarLayout() {
       .then((res) => {
         const list = Array.isArray(res.data) ? res.data : [];
         const tiendas = list.filter((s) => s.es_tienda_online && s.activo);
-        if (user.role === "OWNER") {
-          setMostrarTiendaWeb(tiendas.length > 0);
-        } else if (user.role === "ADMIN" && user.sucursal_id != null) {
-          setMostrarTiendaWeb(tiendas.some((s) => s.id === user.sucursal_id));
-        } else {
-          setMostrarTiendaWeb(false);
-        }
+        setMostrarTiendaWeb(puedeAccederTiendaWeb(user, tiendas));
       })
       .catch(() => setMostrarTiendaWeb(false));
-  }, [user.role, user.sucursal_id]);
+  }, [user.role, user.sucursal_id, user.es_tienda_online]);
+
+  // El catálogo web ya no depende de ninguna "sucursal tienda online": lo
+  // maneja la dueña (o un admin) desde acá.
+  const mostrarCatalogoWeb = puedeManejarCatalogo(user);
+
+  // Aviso de pedidos nuevos: sondeo liviano para quien atiende la web.
+  const { nuevos: pedidosNuevos } = usePedidosNuevos({
+    habilitado: mostrarCatalogoWeb || mostrarTiendaWeb,
+  });
+
+  const baseNav = navStructure(esOwner, user.role, mostrarTiendaWeb);
+  const tiendaWebNav = mostrarTiendaWeb
+    ? [
+        {
+          path: "/tienda-web",
+          icon: Globe,
+          label: "Tienda web",
+          children: [
+            { path: "/tienda-web/publicados", icon: Store, label: "Productos publicados" },
+            { path: "/tienda-web/publicar", icon: Upload, label: "Publicar productos" },
+          ],
+        },
+      ]
+    : [];
+
+  const catalogoWebNav = mostrarCatalogoWeb
+    ? [
+        {
+          path: "/catalogo-web",
+          icon: Images,
+          label: "Catálogo web",
+          children: [
+            { path: "/catalogo-web", icon: Images, label: "Productos del catálogo" },
+            {
+              path: "/tienda-web/pedidos",
+              icon: ClipboardList,
+              label: "Pedidos web",
+              badge: pedidosNuevos,
+            },
+          ],
+        },
+      ]
+    : [];
 
   const navStructureWithTransfer = [
-    ...navStructure(esOwner, user.role),
-    ...(mostrarTiendaWeb
-      ? [{ path: "/tienda-web/productos", icon: Globe, label: "Productos web" }]
-      : []),
+    baseNav[0],
+    ...catalogoWebNav,
+    ...tiendaWebNav,
+    ...baseNav.slice(1),
     ...(esOwner ? [{ path: "/transferir-stock", icon: Truck, label: "Transferir stock" }] : []),
   ];
 
@@ -198,6 +275,7 @@ export default function SidebarLayout() {
     else if (path.startsWith("/stock") || path === "/categorias" || path === "/colores") setExpanded("/stock");
     else if (path.startsWith("/Creditos") || path.startsWith("/creditos") || path === "/NuevoCredito") setExpanded("/Creditos");
     else if (path.startsWith("/Clientes") || path.startsWith("/clientes") || path === "/NuevoCliente" || path.startsWith("/EditarCliente")) setExpanded("/Clientes");
+    else if (path.startsWith("/tienda-web")) setExpanded("/tienda-web");
   }, [location.pathname]);
 
   const handleLogout = () => {
@@ -235,7 +313,14 @@ export default function SidebarLayout() {
     if (path === "/transferir-stock") return location.pathname === "/transferir-stock";
     if (path === "/codigos-barra") return location.pathname === "/codigos-barra";
     if (path === "/consultar-stock") return location.pathname === "/consultar-stock";
-    if (path === "/tienda-web/productos") return location.pathname === "/tienda-web/productos";
+    if (path === "/tienda-web")
+      return (
+        location.pathname === "/tienda-web/publicados" ||
+        location.pathname === "/tienda-web/publicar" ||
+        location.pathname === "/tienda-web/productos"
+      );
+    if (path === "/tienda-web/publicados") return location.pathname === "/tienda-web/publicados";
+    if (path === "/tienda-web/publicar") return location.pathname === "/tienda-web/publicar";
     return location.pathname === path || location.pathname.startsWith(path + "/");
   };
 
@@ -284,6 +369,11 @@ export default function SidebarLayout() {
                   <div className="flex items-center gap-3">
                     <item.icon className="h-5 w-5 shrink-0 opacity-90" />
                     {item.label}
+                    {!isExpanded && totalBadge(item) > 0 && (
+                      <span className="rounded-full bg-amber-500 px-1.5 py-0.5 text-[11px] font-bold leading-none text-white">
+                        {totalBadge(item)}
+                      </span>
+                    )}
                   </div>
                   {isExpanded ? (
                     <ChevronDown className="h-4 w-4 shrink-0" />
@@ -313,6 +403,11 @@ export default function SidebarLayout() {
                         >
                           <child.icon className="h-4 w-4 shrink-0" />
                           {child.label}
+                          {child.badge > 0 && (
+                            <span className="ml-auto rounded-full bg-amber-500 px-1.5 py-0.5 text-[11px] font-bold leading-none text-white">
+                              {child.badge}
+                            </span>
+                          )}
                         </Link>
                       );
                     })}

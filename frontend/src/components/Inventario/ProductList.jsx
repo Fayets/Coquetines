@@ -5,9 +5,10 @@ import axios from "axios";
 import { FaEye } from "react-icons/fa";
 import { MdDelete } from "react-icons/md";
 import Swal from "sweetalert2";
-import { appendSucursalParam, getUser, getToken } from "../../utils/sucursal";
+import { appendSucursalStockParam, getSucursalStockId, getUser, getToken } from "../../utils/sucursal";
+import { puedeAccederTiendaWeb } from "../../utils/tiendaWeb";
 
-const ITEMS_PER_PAGE = 6;
+const ITEMS_PER_PAGE = 10;
 import { API_URL } from "../../utils/api";
 
 export default function ProductList() {
@@ -28,6 +29,15 @@ export default function ProductList() {
   const token = getToken();
   const user = getUser();
   const esOwner = user.role === "OWNER";
+  const esTiendaOnline = puedeAccederTiendaWeb(user);
+  const [stockSucursalNombre, setStockSucursalNombre] = useState(user.sucursal_stock_nombre || "");
+  const [stockSucursalId, setStockSucursalId] = useState(() => {
+    if (user.es_tienda_online && user.sucursal_stock_id != null) {
+      const n = Number(user.sucursal_stock_id);
+      return Number.isFinite(n) ? n : null;
+    }
+    return null;
+  });
 
   const [ingresoProduct, setIngresoProduct] = useState(null);
   const [ingresoFecha, setIngresoFecha] = useState("");
@@ -134,15 +144,41 @@ export default function ProductList() {
   }, [esOwner, token]);
 
   useEffect(() => {
+    if (!esTiendaOnline || !token || stockSucursalId) return;
+    axios
+      .get(`${API_URL}/sucursales/`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => {
+        const list = Array.isArray(res.data) ? res.data : [];
+        const tienda = list.find(
+          (s) => Number(s.id) === Number(user.sucursal_id) && s.es_tienda_online
+        );
+        if (tienda?.sucursal_stock_id != null) {
+          setStockSucursalId(Number(tienda.sucursal_stock_id));
+          const stock = list.find((s) => Number(s.id) === Number(tienda.sucursal_stock_id));
+          if (stock?.nombre) setStockSucursalNombre(stock.nombre);
+        }
+      })
+      .catch(() => {
+        setLoading(false);
+      });
+  }, [esTiendaOnline, token, stockSucursalId, user.sucursal_id]);
+
+  useEffect(() => {
     const fetchProducts = async () => {
       if (!token) return;
+      if (esTiendaOnline && !stockSucursalId && !getSucursalStockId()) return;
       setLoading(true);
       try {
         let url = `${API_URL}/products/all`;
         if (esOwner && sucursalFilter) {
           url += `?sucursal_id=${sucursalFilter}`;
         } else if (!esOwner) {
-          url = appendSucursalParam(url);
+          const sid = stockSucursalId ?? getSucursalStockId();
+          if (sid != null) {
+            url += `?sucursal_id=${sid}`;
+          } else {
+            url = appendSucursalStockParam(url);
+          }
         }
         const response = await axios.get(url, {
           headers: { Authorization: `Bearer ${token}` },
@@ -160,7 +196,7 @@ export default function ProductList() {
     };
 
     fetchProducts();
-  }, [token, esOwner, sucursalFilter]);
+  }, [token, esOwner, sucursalFilter, esTiendaOnline, stockSucursalId]);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -369,20 +405,24 @@ export default function ProductList() {
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Inventario</h1>
           <p className="text-slate-500 text-sm mt-0.5">
-            Las categorías del filtro son el mismo catálogo en todas las sucursales.
+            {esTiendaOnline && stockSucursalNombre
+              ? `Stock disponible para la tienda web · ${stockSucursalNombre}`
+              : "Las categorías del filtro son el mismo catálogo en todas las sucursales."}
           </p>
         </div>
-        <Link
-          to="/stock/new"
-          style={{ backgroundColor: "#2563eb", color: "#fff" }}
-          className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg shadow-sm hover:opacity-90"
-        >
-          <Plus className="h-4 w-4" />
-          Nuevo producto
-        </Link>
+        {!esTiendaOnline && (
+          <Link
+            to="/stock/new"
+            style={{ backgroundColor: "#2563eb", color: "#fff" }}
+            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg shadow-sm hover:opacity-90"
+          >
+            <Plus className="h-4 w-4" />
+            Nuevo producto
+          </Link>
+        )}
       </div>
 
-      {/* Acciones de categoría - fuera de la tabla */}
+      {!esTiendaOnline && (
       <div className="flex items-center gap-2 mb-4">
         <button
           className="px-3 py-1.5 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50"
@@ -415,6 +455,7 @@ export default function ProductList() {
           Eliminar categoría
         </button>
       </div>
+      )}
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-6">
         {/* Barra de búsqueda y filtros */}
@@ -548,6 +589,7 @@ export default function ProductList() {
                     >
                       <FaEye className="h-4 w-4" />
                     </button>
+                    {!esTiendaOnline && (
                     <button
                       type="button"
                       className="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg"
@@ -556,6 +598,7 @@ export default function ProductList() {
                     >
                       <MdDelete className="h-4 w-4" />
                     </button>
+                    )}
                   </div>
                 </td>
               </tr>

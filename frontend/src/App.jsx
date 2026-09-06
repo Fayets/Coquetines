@@ -33,12 +33,19 @@ import TransferirStock from "./components/Transferencia/TransferirStock";
 import GenerarCodigosBarra from "./components/CodigosBarra/GenerarCodigosBarra";
 import ConsultarStockSucursales from "./components/Inventario/ConsultarStockSucursales";
 import GestionProductosWeb from "./components/TiendaWeb/GestionProductosWeb";
+import ProductosPublicadosWeb from "./components/TiendaWeb/ProductosPublicadosWeb";
+import CatalogoPublico from "./components/Catalogo/CatalogoPublico";
+import PedidosWeb from "./components/TiendaWeb/PedidosWeb";
+import CatalogoAdmin from "./components/CatalogoWeb/CatalogoAdmin";
 
 function App() {
   return (
     <Router>
       <Routes>
         <Route path="/" element={<Login />} />
+
+        {/* Catálogo público: sin login, es la vidriera para clientas */}
+        <Route path="/catalogo" element={<CatalogoPublico />} />
 
         <Route element={<PrivateRoute element={<SidebarLayout />} />}>
           <Route path="dashboard" element={<DashboardStats />} />
@@ -71,7 +78,11 @@ function App() {
           <Route path="transferir-stock" element={<TransferirStock />} />
           <Route path="codigos-barra" element={<GenerarCodigosBarra />} />
           <Route path="consultar-stock" element={<ConsultarStockSucursales />} />
-          <Route path="tienda-web/productos" element={<GestionProductosWeb />} />
+          <Route path="tienda-web/publicar" element={<GestionProductosWeb />} />
+          <Route path="tienda-web/productos" element={<Navigate to="/tienda-web/publicar" replace />} />
+          <Route path="tienda-web/publicados" element={<ProductosPublicadosWeb />} />
+          <Route path="tienda-web/pedidos" element={<PedidosWeb />} />
+          <Route path="catalogo-web" element={<CatalogoAdmin />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

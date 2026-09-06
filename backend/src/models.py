@@ -28,6 +28,7 @@ class Sucursal(db.Entity):
     cambios_venta = Set("CambioVenta")
     notas_credito = Set("NotaCredito")
     tienda_online_productos = Set("TiendaOnlineProducto", reverse="sucursal_tienda")
+    pedidos_web = Set("PedidoWeb", reverse="sucursal")
     _table_ = "Sucursales"
 
 # Modelo de usuario (sucursal_id es None para OWNER/dueña)
@@ -79,7 +80,35 @@ class Product(db.Entity):
     cambios_venta_devuelto = Set("CambioVenta", reverse="producto_devuelto")
     cambios_venta_nuevo = Set("CambioVenta", reverse="producto_nuevo")
     tienda_online_productos = Set("TiendaOnlineProducto", reverse="producto")
+    pedidos_web_items = Set("PedidoWebItem", reverse="producto")
+
+    # --- Catálogo web propio ---
+    # Publicar es una propiedad del producto: no depende de ninguna sucursal
+    # "tienda online". Cualquier producto de cualquier sucursal puede salir.
+    publicado_web = Optional(bool, default=False)
+    # 0 = sin precio propio, el catálogo usa precio_venta.
+    precio_web = Optional(float, default=0)
+    imagen_url = Optional(str, default="")
+    orden_web = Optional(int, default=0)
+    imagenes_web = Set("ImagenProducto", reverse="producto")
     _table_ = "Products"
+
+
+class ImagenProducto(db.Entity):
+    """Foto de producto guardada en la base.
+
+    Va en Postgres y no en disco a propósito: en Render el filesystem es
+    efímero y cada deploy borraría las fotos. Se guardan redimensionadas
+    (~900px, JPEG) para que pesen poco. Si algún día se pasa a Cloudinary o
+    similar, alcanza con poner la URL externa en Product.imagen_url.
+    """
+
+    id = PrimaryKey(int, auto=True)
+    producto = Optional("Product", column="producto_id")
+    contenido = Required(bytes)
+    mime = Required(str, default="image/jpeg")
+    creada = Required(datetime, default=lambda: datetime.now())
+    _table_ = "Imagenes_Producto"
 
 
 class TiendaOnlineProducto(db.Entity):
@@ -274,3 +303,49 @@ class Config(db.Entity):
     clave = Required(str, unique=True)
     valor = Optional(str, default="")
     _table_ = "Config"
+
+# ---------------------------------------------------------------------------
+# Pedidos generados desde el catálogo público (landing).
+#
+# Un pedido web NO es una venta: no toca stock ni caja. Es una intención de
+# compra que llega al dashboard para que Coquetines contacte a la clienta y,
+# si se confirma, cargue la venta por el circuito normal.
+# ---------------------------------------------------------------------------
+class EstadoPedidoWeb(str, Enum):
+    NUEVO = "NUEVO"
+    CONTACTADO = "CONTACTADO"
+    CONFIRMADO = "CONFIRMADO"
+    CANCELADO = "CANCELADO"
+
+
+class PedidoWeb(db.Entity):
+    id = PrimaryKey(int, auto=True)
+    numero = Required(str, unique=True)  # visible para la clienta: "W-0042"
+    sucursal = Optional("Sucursal", column="sucursal_id")
+    cliente_nombre = Required(str)
+    cliente_telefono = Required(str)
+    cliente_localidad = Optional(str, default="")
+    nota = Optional(str, default="")
+    total = Required(float, default=0)
+    estado = Required(str, default=EstadoPedidoWeb.NUEVO.value)
+    fecha_hora = Required(datetime, default=lambda: datetime.now())
+    contactado_en = Optional(datetime)
+    # Venta que se generó a partir de este pedido (la que mueve stock y caja).
+    venta_id = Optional(int)
+    items = Set("PedidoWebItem")
+    _table_ = "Pedidos_Web"
+
+
+class PedidoWebItem(db.Entity):
+    id = PrimaryKey(int, auto=True)
+    pedido = Required("PedidoWeb", column="pedido_id")
+    producto = Optional("Product", column="producto_id")
+    # Copia congelada al momento del pedido: si después cambia el precio o se
+    # borra el producto, el pedido sigue diciendo qué se pidió y a cuánto.
+    codigo = Required(str)
+    nombre = Required(str)
+    talle = Optional(str, default="")
+    color = Optional(str, default="")
+    cantidad = Required(int)
+    precio_unitario = Required(float)
+    _table_ = "Pedidos_Web_Items"

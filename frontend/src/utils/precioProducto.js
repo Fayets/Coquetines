@@ -1,7 +1,7 @@
 /**
  * Alineado con backend: src/services/precio_producto.py (obtener_precio_unitario).
  * @param {object} producto
- * @param {string} metodoPago — ej. "Efectivo", "Transferencia", "Credito", "Débito"
+ * @param {string} metodoPago — ej. "Web", "Efectivo", "Transferencia", "Credito", "Débito"
  * @returns {number}
  */
 export function precioUnitarioPorMetodoPago(producto, metodoPago) {
@@ -24,6 +24,14 @@ export function precioUnitarioPorMetodoPago(producto, metodoPago) {
   const et = num(producto?.precio_et);
   const pe = nz(producto?.precio_efectivo);
   const pt = nz(producto?.precio_transferencia);
+  const pw = nz(producto?.precio_web);
+
+  // Se cobra lo que decía el catálogo. Sin precio web propio, el catálogo ya
+  // mostraba el de lista.
+  if (norm === "web") {
+    if (pw !== 0) return pw;
+    return pv;
+  }
 
   if (norm === "efectivo") {
     if (pe !== 0) return pe;

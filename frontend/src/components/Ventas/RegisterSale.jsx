@@ -1,13 +1,17 @@
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
-import { Search, Plus, Trash2, UserPlus } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { Search, Plus, Trash2, UserPlus, Globe, X, Store } from "lucide-react";
 import Swal from "sweetalert2";
 import { getSucursalId, getUser, getToken } from "../../utils/sucursal";
 import { API_URL } from "../../utils/api";
 import { precioUnitarioPorMetodoPago } from "../../utils/precioProducto";
+import { cambiarEstadoPedido } from "../../utils/pedidosWeb";
+import { formatPrecio } from "../../utils/tiendaWebPrecios";
 
-const TIPOS_PRECIO = ["Efectivo", "Transferencia", "Credito", "Débito"];
+// "Web" es el precio que la clienta vio en el catálogo: se usa al cerrar un
+// pedido web, para cobrarle exactamente lo que se le mostró.
+const TIPOS_PRECIO = ["Efectivo", "Transferencia", "Credito", "Débito", "Web"];
 const METODOS_COBRO = ["Efectivo", "Transferencia", "Credito", "Débito"];
 
 const PAGO_TOL = 0.02;
@@ -32,6 +36,19 @@ export default function NuevaVenta() {
   const searchInputRef = useRef(null);
   const scanTimerRef = useRef(null);
   const navigate = useNavigate();
+  const location = useLocation();
+  // Cuando se entra desde "Generar venta" viene el pedido web a precargar.
+  const [pedidoWeb, setPedidoWeb] = useState(location.state?.pedidoWeb ?? null);
+
+  // La dueña no tiene sucursal propia: tiene que decir de cuál sale la
+  // mercadería, porque la venta descuenta ese stock y entra en esa caja.
+  const esOwner = getUser().role === "OWNER";
+  const [sucursales, setSucursales] = useState([]);
+  const [sucursalVenta, setSucursalVenta] = useState(
+    location.state?.pedidoWeb?.sucursales_involucradas?.[0] ?? null
+  );
+  const sucursalEfectiva = esOwner ? sucursalVenta : getSucursalId();
+  const yaPrecargado = useRef(false);
 
   const token = getToken();
 
@@ -42,18 +59,27 @@ export default function NuevaVenta() {
   }, []);
 
   useEffect(() => {
-    if (getUser().role === "OWNER") {
-      navigate("/ventas", { replace: true });
-    }
-  }, [navigate]);
+    if (!esOwner) return;
+    axios
+      .get(`${API_URL}/sucursales/`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => {
+        const activas = (Array.isArray(r.data) ? r.data : []).filter(
+          (x) => x.activo && !x.es_tienda_online
+        );
+        setSucursales(activas);
+        setSucursalVenta((actual) => actual ?? (activas.length === 1 ? activas[0].id : null));
+      })
+      .catch(() => setSucursales([]));
+  }, [esOwner, token]);
 
   useEffect(() => {
-    if (getUser().role === "OWNER") return;
+    if (sucursalEfectiva == null) {
+      setProductos([]);
+      return;
+    }
     const fetchProductos = async () => {
       try {
-        const url =
-          `${API_URL}/products/all` +
-          (getSucursalId() != null ? `?sucursal_id=${getSucursalId()}` : "");
+        const url = `${API_URL}/products/all?sucursal_id=${sucursalEfectiva}`;
         const response = await axios.get(url, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -64,7 +90,23 @@ export default function NuevaVenta() {
       }
     };
     fetchProductos();
-  }, [token]);
+  }, [token, sucursalEfectiva]);
+
+  const cambiarSucursal = (id) => {
+    // Los productos pertenecen a una sucursal: mezclar dos en una venta
+    // descuadraría el stock y la caja.
+    if (carrito.length > 0) {
+      Swal.fire({
+        icon: "warning",
+        title: "Se vacía el carrito",
+        text: "Los productos son de la sucursal anterior. Cargalos de nuevo.",
+        timer: 2200,
+        showConfirmButton: false,
+      });
+    }
+    setCarrito([]);
+    setSucursalVenta(id);
+  };
 
   const productosFiltrados = productos.filter(
     (producto) =>
@@ -135,6 +177,54 @@ export default function NuevaVenta() {
       }
     }
   };
+
+  useEffect(() => {
+    if (!pedidoWeb || yaPrecargado.current || productos.length === 0) return;
+    yaPrecargado.current = true;
+
+    if ((pedidoWeb.sucursales_involucradas || []).length > 1) {
+      Swal.fire({
+        icon: "info",
+        title: "El pedido toca dos sucursales",
+        text:
+          "Una venta sale de una sola sucursal. Cerrá lo de esta y después " +
+          "hacé otra venta con el resto.",
+      });
+    }
+
+    const lineas = [];
+    const faltantes = [];
+    for (const item of pedidoWeb.items) {
+      const producto =
+        productos.find((p) => p.id === item.producto_id) ||
+        productos.find((p) => p.codigo === item.codigo);
+      const disponible = Math.min(item.cantidad, producto?.stock ?? 0);
+      if (!producto || disponible <= 0) {
+        faltantes.push(`${item.nombre} (T${item.talle})`);
+        continue;
+      }
+      // Se cotiza a precio Web: es lo que la clienta vio y aceptó.
+      const tipoPrecio = "Web";
+      const unitario = precioUnitarioPorMetodoPago(producto, tipoPrecio);
+      lineas.push({
+        ...producto,
+        cantidad: disponible,
+        subtotal: unitario * disponible,
+        tipoPrecio,
+      });
+    }
+    setCarrito(lineas);
+
+    if (faltantes.length) {
+      Swal.fire({
+        icon: "warning",
+        title: "Faltan prendas del pedido",
+        html:
+          `No se pudieron cargar:<br>${faltantes.join("<br>")}<br><br>` +
+          `Puede ser stock agotado o que el producto sea de otra sucursal.`,
+      });
+    }
+  }, [pedidoWeb, productos]);
 
   const eliminarDelCarrito = (index) => {
     const newCarrito = [...carrito];
@@ -225,7 +315,7 @@ export default function NuevaVenta() {
       metodo_pago: p.metodo_pago,
       monto: Math.round((parseFloat(p.monto) + Number.EPSILON) * 100) / 100,
     }));
-    const sid = getSucursalId();
+    const sid = sucursalEfectiva;
     const body = {
       ...(sid != null && { sucursal_id: sid }),
       cliente: "Consumidor Final",
@@ -239,7 +329,29 @@ export default function NuevaVenta() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.status === 201 && response.data?.success !== false) {
-        Swal.fire({ icon: "success", title: "Venta registrada correctamente." });
+        const ventaId = response.data?.venta_id ?? null;
+
+        if (pedidoWeb) {
+          // El pedido queda cerrado y apuntando a su venta. Si esto falla, la
+          // venta ya está hecha: se avisa pero no se la deshace.
+          try {
+            await cambiarEstadoPedido(pedidoWeb.pedido.id, "CONFIRMADO", ventaId);
+          } catch {
+            Swal.fire({
+              icon: "warning",
+              title: "Venta registrada",
+              text: `No pudimos marcar el pedido ${pedidoWeb.pedido.numero} como confirmado. Cambialo a mano desde Pedidos web.`,
+            });
+            navigate("/ventas");
+            return;
+          }
+        }
+
+        Swal.fire({
+          icon: "success",
+          title: "Venta registrada correctamente.",
+          text: pedidoWeb ? `Pedido ${pedidoWeb.pedido.numero} cerrado.` : undefined,
+        });
         navigate("/ventas");
       } else {
         setError(response.data?.message || "No se pudo registrar la venta.");
@@ -262,12 +374,92 @@ export default function NuevaVenta() {
 
   const diffPagos = sumaPagos() - total;
 
+  const totalPedido = pedidoWeb
+    ? pedidoWeb.items.reduce((acc, i) => acc + i.precio_pedido * i.cantidad, 0)
+    : 0;
+  const difiereDelPedido =
+    pedidoWeb && Math.abs(totalPedido - total) > 1 && carrito.length > 0;
+
   return (
     <div className="p-8">
+      {pedidoWeb && (
+        <div className="mb-5 rounded-xl border border-teal-200 bg-teal-50 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-start gap-2.5">
+              <Globe className="mt-0.5 h-4 w-4 shrink-0 text-teal-600" />
+              <div className="text-sm">
+                <p className="font-medium text-teal-900">
+                  Venta del pedido web {pedidoWeb.pedido.numero}
+                </p>
+                <p className="text-teal-700">
+                  {pedidoWeb.pedido.cliente_nombre} · {pedidoWeb.pedido.cliente_telefono}
+                  {pedidoWeb.pedido.cliente_localidad
+                    ? ` · ${pedidoWeb.pedido.cliente_localidad}`
+                    : ""}
+                </p>
+                {pedidoWeb.pedido.nota && (
+                  <p className="mt-0.5 italic text-teal-700">“{pedidoWeb.pedido.nota}”</p>
+                )}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setPedidoWeb(null)}
+              className="rounded-lg p-1 text-teal-700 hover:bg-teal-100"
+              title="Desvincular: la venta se registra sin cerrar el pedido"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          {difiereDelPedido && (
+            <p className="mt-2 border-t border-teal-200 pt-2 text-xs text-teal-800">
+              La clienta vio <strong>{formatPrecio(totalPedido)}</strong> en la web y
+              acá suma <strong>{formatPrecio(total)}</strong>. El precio web y el de
+              mostrador pueden diferir: revisá antes de cobrar.
+            </p>
+          )}
+        </div>
+      )}
+
+      {esOwner && (
+        <div className="mb-5 rounded-xl border border-slate-200 bg-white px-4 py-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 text-sm">
+              <Store className="h-4 w-4 text-slate-400" />
+              <span className="font-medium text-slate-700">Sucursal de la venta</span>
+            </div>
+            <select
+              value={sucursalVenta ?? ""}
+              onChange={(e) => cambiarSucursal(e.target.value ? Number(e.target.value) : null)}
+              className="rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-teal-500"
+            >
+              <option value="">Elegí una sucursal…</option>
+              {sucursales.map((suc) => (
+                <option key={suc.id} value={suc.id}>
+                  {suc.nombre}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-slate-500">
+              De acá sale la mercadería: se descuenta su stock y entra en su caja del día.
+            </p>
+          </div>
+
+          {sucursalVenta == null && (
+            <p className="mt-2 border-t border-slate-100 pt-2 text-xs text-amber-700">
+              Elegí la sucursal para poder cargar productos.
+            </p>
+          )}
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Nueva venta</h1>
-          <p className="text-slate-500 text-sm mt-0.5">Registrar venta al contado</p>
+          <p className="text-slate-500 text-sm mt-0.5">
+            {pedidoWeb ? "Cerrando un pedido del catálogo web" : "Registrar venta al contado"}
+          </p>
         </div>
         <button
           onClick={credito}

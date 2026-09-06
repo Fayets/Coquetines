@@ -54,3 +54,67 @@
 .table-professional tbody tr {
   @apply hover:bg-slate-50/50 transition-colors;
 }
+
+/* ============================================================
+   Catálogo público (landing Coquetines)
+   Paleta tomada del isologo: arcoíris pastel + script terracota
+   sobre crema. Se aplica solo dentro de .catalogo para no tocar
+   el sistema de gestión.
+   ============================================================ */
+.catalogo {
+  --coq-crema: #fbf6f0;
+  --coq-crema-2: #f5ece1;
+  --coq-arena: #ede0d1;
+  --coq-linea: #e6d8c8;
+  --coq-terracota: #c4794f;
+  --coq-terracota-osc: #a5613c;
+  --coq-espresso: #453730;
+  --coq-espresso-2: #7c6a5e;
+  --coq-salvia: #9dae8b;
+  --coq-rosa: #dda89c;
+  --coq-durazno: #efc9a8;
+
+  font-family: "Poppins", "Inter", system-ui, sans-serif;
+  color: var(--coq-espresso);
+  background: var(--coq-crema);
+}
+
+.catalogo .script {
+  font-family: "Pacifico", "Poppins", cursive;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+.catalogo ::selection {
+  background: var(--coq-durazno);
+  color: var(--coq-espresso);
+}
+
+/* Ocultar la barra de scroll horizontal de los chips de filtro */
+.catalogo .sin-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.catalogo .sin-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes coq-entrada {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.catalogo .entrada {
+  animation: coq-entrada 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .catalogo .entrada {
+    animation: none;
+  }
+}

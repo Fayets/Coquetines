@@ -81,6 +81,47 @@ def get_sucursal_id_for_user(current_user, sucursal_id_from_request: int | None)
     return SucursalServices().get_or_create_default_sucursal_id()
 
 
+def _stock_sucursal_id_for_user(current_user) -> int | None:
+    """Si el usuario pertenece a tienda online, devuelve la sucursal física de stock."""
+    if getattr(current_user, "es_tienda_online", False):
+        stock_id = getattr(current_user, "sucursal_stock_id", None)
+        if stock_id is not None:
+            return int(stock_id)
+    user_sid = getattr(current_user, "sucursal_id", None)
+    if user_sid is None:
+        return None
+    from pony.orm import db_session
+    from src import models
+
+    with db_session:
+        suc = models.Sucursal.get(id=int(user_sid))
+        if not suc or not bool(getattr(suc, "es_tienda_online", False) or False):
+            return None
+        stock_id = getattr(suc, "sucursal_stock_id", None)
+        return int(stock_id) if stock_id is not None else None
+
+
+def get_sucursal_id_for_stock_read(current_user, sucursal_id_from_request: int | None) -> int | None:
+    """
+    Sucursal para consultas de inventario/stock.
+    Tienda online: usa sucursal_stock_id vinculada (ignora la sucursal virtual del usuario).
+    """
+    role = getattr(current_user, "role", None)
+    if role == "OWNER":
+        return sucursal_id_from_request
+
+    stock_sid = _stock_sucursal_id_for_user(current_user)
+    if stock_sid is not None:
+        if sucursal_id_from_request is not None and int(sucursal_id_from_request) != stock_sid:
+            raise HTTPException(
+                status_code=403,
+                detail="Solo podés consultar el stock de la sucursal vinculada a la tienda online.",
+            )
+        return stock_sid
+
+    return get_sucursal_id_for_user(current_user, sucursal_id_from_request)
+
+
 def get_sucursal_id_for_ventas_cambio_listado(
     current_user, sucursal_id_from_request: int | None
 ) -> int | None:
@@ -158,7 +199,9 @@ async def login(request: schemas.LoginRequest):
         raise HTTPException(status_code=400, detail="Se requiere un nombre de usuario o un email")
 
     # Buscar el usuario con el servicio (sucursal leída dentro de la sesión para no colgar)
-    user, sucursal_id, sucursal_nombre = service.search_user(username=username, email=email, password=password)
+    user, sucursal_id, sucursal_nombre, es_tienda_online, sucursal_stock_id, sucursal_stock_nombre = service.search_user(
+        username=username, email=email, password=password
+    )
 
     access_token = {
         "id": str(user.id),
@@ -181,6 +224,9 @@ async def login(request: schemas.LoginRequest):
             "role": getattr(user, "role", "ADMIN"),
             "sucursal_id": sucursal_id,
             "sucursal_nombre": sucursal_nombre,
+            "es_tienda_online": es_tienda_online,
+            "sucursal_stock_id": sucursal_stock_id,
+            "sucursal_stock_nombre": sucursal_stock_nombre,
         },
     }
 

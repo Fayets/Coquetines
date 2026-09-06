@@ -1,115 +1,32 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import axios from "axios";
-import { Globe, Search, Save } from "lucide-react";
+import { Upload, Search, Save, Loader2 } from "lucide-react";
 import Swal from "sweetalert2";
 import useAuth from "../Hooks/useAuth";
-import { getUser, getToken } from "../../utils/sucursal";
-import { useNavigate } from "react-router-dom";
+import {
+  PRECIO_TIPOS,
+  labelPrecioTipo,
+  precioBaseDesdeProducto,
+  aplicarMarkup,
+  formatPrecio,
+} from "../../utils/tiendaWebPrecios";
+import { useTiendaOnlineContext } from "./useTiendaOnlineContext";
 import { API_URL } from "../../utils/api";
 
-const PRECIO_TIPOS = [
-  { value: "precio_venta", label: "Precio venta" },
-  { value: "precio_efectivo", label: "Precio efectivo" },
-  { value: "precio_transferencia", label: "Precio transferencia" },
-  { value: "precio_et", label: "Precio ET" },
-];
-
-const labelPrecioTipo = (tipo) =>
-  PRECIO_TIPOS.find((t) => t.value === tipo)?.label || tipo;
-
-function precioBaseDesdeProducto(producto, precioTipo) {
-  const tipo = precioTipo || "precio_venta";
-  const pv = Number(producto.precio_venta) || 0;
-  if (tipo === "precio_venta") return pv;
-  if (tipo === "precio_efectivo") {
-    const pe = Number(producto.precio_efectivo) || 0;
-    return pe > 0 ? pe : pv;
-  }
-  if (tipo === "precio_transferencia") {
-    const pt = Number(producto.precio_transferencia) || 0;
-    return pt > 0 ? pt : pv;
-  }
-  if (tipo === "precio_et") {
-    const pet = Number(producto.precio_et) || 0;
-    return pet > 0 ? pet : pv;
-  }
-  return pv;
-}
-
-function aplicarMarkup(precioBase, markupPct) {
-  const base = Number(precioBase) || 0;
-  const markup = Number(markupPct) || 0;
-  return Math.round(base * (1 + markup / 100) * 100) / 100;
-}
-
-function formatPrecio(n) {
-  return new Intl.NumberFormat("es-AR", {
-    style: "currency",
-    currency: "ARS",
-    minimumFractionDigits: 2,
-  }).format(Number(n) || 0);
-}
-
 export default function GestionProductosWeb() {
-  const token = getToken();
-  const user = getUser();
-  const navigate = useNavigate();
   const isAuthenticated = useAuth();
-  const esOwner = user.role === "OWNER";
-  const esAdmin = user.role === "ADMIN";
+  const { token, tiendaOnline, stockSucursalNombre, loading: contextLoading } = useTiendaOnlineContext();
 
-  const [tiendaOnline, setTiendaOnline] = useState(null);
-  const [stockSucursalNombre, setStockSucursalNombre] = useState("");
   const [configWeb, setConfigWeb] = useState({ markup_web: 0, precio_tipo_web: "precio_venta" });
   const [configDraft, setConfigDraft] = useState({ markup_web: "0", precio_tipo_web: "precio_venta" });
   const [savingConfig, setSavingConfig] = useState(false);
   const [productosWeb, setProductosWeb] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [togglingProductoId, setTogglingProductoId] = useState(null);
   const [savingProductoId, setSavingProductoId] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const productoDraftsRef = useRef({});
   const saveTimersRef = useRef({});
-
-  useEffect(() => {
-    if (user.role === "EMPLEADO") {
-      navigate("/dashboard", { replace: true });
-    }
-  }, [user.role, navigate]);
-
-  useEffect(() => {
-    if (!token || (!esOwner && !esAdmin)) return;
-
-    const loadContext = async () => {
-      try {
-        const res = await axios.get(`${API_URL}/sucursales/`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const list = Array.isArray(res.data) ? res.data : [];
-        const tiendas = list.filter((s) => s.es_tienda_online && s.activo);
-
-        let tienda = null;
-        if (esOwner) {
-          tienda = tiendas.sort((a, b) => a.id - b.id)[0] || null;
-        } else if (esAdmin && user.sucursal_id != null) {
-          tienda = tiendas.find((s) => s.id === user.sucursal_id) || null;
-        }
-
-        if (!tienda) {
-          navigate("/dashboard", { replace: true });
-          return;
-        }
-
-        setTiendaOnline(tienda);
-        const stock = list.find((s) => s.id === tienda.sucursal_stock_id);
-        setStockSucursalNombre(stock?.nombre || "");
-      } catch {
-        navigate("/dashboard", { replace: true });
-      }
-    };
-
-    loadContext();
-  }, [token, esOwner, esAdmin, user.sucursal_id, navigate]);
 
   const fetchProductosWeb = useCallback(() => {
     if (!token) return;
@@ -276,24 +193,37 @@ export default function GestionProductosWeb() {
       .finally(() => setSavingProductoId(null));
   };
 
-  const handleToggleProductoWeb = (producto) => {
+  const handleToggleProductoWeb = async (producto) => {
     if (!token || togglingProductoId) return;
-    setTogglingProductoId(producto.producto_id);
+    const productoId = producto.producto_id;
     const publicar = !producto.publicado;
-    const req = publicar
-      ? axios.post(`${API_URL}/woo/tienda/productos/${producto.producto_id}`, null, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-      : axios.delete(`${API_URL}/woo/tienda/productos/${producto.producto_id}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-    req
-      .then(() => fetchProductosWeb())
-      .catch((err) => {
-        const msg = err.response?.data?.detail || "No se pudo actualizar el producto.";
-        Swal.fire("Error", typeof msg === "string" ? msg : "No se pudo actualizar el producto.", "error");
-      })
-      .finally(() => setTogglingProductoId(null));
+    const headers = { Authorization: `Bearer ${token}` };
+
+    setTogglingProductoId(productoId);
+    try {
+      if (publicar) {
+        await axios.post(`${API_URL}/woo/tienda/productos/${productoId}`, null, { headers });
+        const syncRes = await axios.post(`${API_URL}/woo/tienda/sync-producto/${productoId}`, null, { headers });
+        const msg = syncRes.data?.message || "Producto sincronizado con WooCommerce";
+        Swal.fire({ icon: "success", title: "Publicado", text: msg, timer: 2500, showConfirmButton: false });
+      } else {
+        await axios.delete(`${API_URL}/woo/tienda/productos/${productoId}`, { headers });
+        const syncRes = await axios.delete(`${API_URL}/woo/tienda/sync-producto/${productoId}`, { headers });
+        const msg = syncRes.data?.message || "Producto movido a borrador en WooCommerce";
+        Swal.fire({ icon: "success", title: "Despublicado", text: msg, timer: 2500, showConfirmButton: false });
+      }
+      fetchProductosWeb();
+    } catch (err) {
+      const msg =
+        err.response?.data?.detail ||
+        (publicar
+          ? "No se pudo publicar o sincronizar el producto con WooCommerce."
+          : "No se pudo despublicar o sincronizar el producto con WooCommerce.");
+      Swal.fire("Error", typeof msg === "string" ? msg : "No se pudo actualizar el producto.", "error");
+      fetchProductosWeb();
+    } finally {
+      setTogglingProductoId(null);
+    }
   };
 
   const filtrados = productosWeb.filter((p) => {
@@ -320,7 +250,11 @@ export default function GestionProductosWeb() {
   if (!tiendaOnline) {
     return (
       <div className="flex justify-center items-center min-h-[300px]">
-        <div className="w-10 h-10 border-2 border-slate-200 border-t-violet-600 rounded-full animate-spin" />
+        {contextLoading ? (
+          <div className="w-10 h-10 border-2 border-slate-200 border-t-violet-600 rounded-full animate-spin" />
+        ) : (
+          <p className="text-slate-600 text-sm">No tenés acceso a la tienda online.</p>
+        )}
       </div>
     );
   }
@@ -329,16 +263,16 @@ export default function GestionProductosWeb() {
     <div className="p-8">
       <div className="mb-6">
         <div className="flex items-center gap-2 text-violet-600 mb-1">
-          <Globe className="h-5 w-5" />
-          <span className="text-sm font-medium">Tienda online</span>
+          <Upload className="h-5 w-5" />
+          <span className="text-sm font-medium">Tienda web</span>
         </div>
-        <h1 className="text-2xl font-semibold text-slate-900">Productos web</h1>
+        <h1 className="text-2xl font-semibold text-slate-900">Publicar productos</h1>
         <p className="text-slate-500 text-sm mt-0.5">
           {tiendaOnline.nombre}
           {stockSucursalNombre ? ` · Stock desde ${stockSucursalNombre}` : ""}
         </p>
         <p className="text-slate-500 text-sm mt-1">
-          {publicados} publicado{publicados !== 1 ? "s" : ""} de {productosWeb.length} productos
+          Seleccioná qué productos enviar a WooCommerce · {publicados} publicado{publicados !== 1 ? "s" : ""} de {productosWeb.length}
         </p>
       </div>
 
@@ -422,6 +356,7 @@ export default function GestionProductosWeb() {
               const draft = getProductoDraft(p);
               const preview = previewProducto(p, draft);
               const guardando = savingProductoId === p.producto_id;
+              const sincronizando = togglingProductoId === p.producto_id;
 
               return (
                 <li key={p.producto_id} className="px-4 py-3 hover:bg-slate-50/50">
@@ -433,17 +368,25 @@ export default function GestionProductosWeb() {
                       </p>
                     </div>
 
-                    <label className="inline-flex items-center gap-2 shrink-0 cursor-pointer mt-1">
+                    <label
+                      className={`inline-flex items-center gap-2 shrink-0 mt-1 ${
+                        sincronizando ? "cursor-wait" : "cursor-pointer"
+                      }`}
+                    >
                       <span className={`text-xs font-medium ${p.publicado ? "text-violet-700" : "text-slate-500"}`}>
-                        {p.publicado ? "Publicado" : "No publicado"}
+                        {sincronizando ? "Sincronizando…" : p.publicado ? "Publicado" : "No publicado"}
                       </span>
-                      <input
-                        type="checkbox"
-                        checked={!!p.publicado}
-                        disabled={togglingProductoId === p.producto_id}
-                        onChange={() => handleToggleProductoWeb(p)}
-                        className="rounded border-slate-300 text-violet-600 focus:ring-violet-500 disabled:opacity-50"
-                      />
+                      {sincronizando ? (
+                        <Loader2 className="h-4 w-4 text-violet-600 animate-spin shrink-0" />
+                      ) : (
+                        <input
+                          type="checkbox"
+                          checked={!!p.publicado}
+                          disabled={sincronizando}
+                          onChange={() => handleToggleProductoWeb(p)}
+                          className="rounded border-slate-300 text-violet-600 focus:ring-violet-500 disabled:opacity-50"
+                        />
+                      )}
                     </label>
                   </div>
 

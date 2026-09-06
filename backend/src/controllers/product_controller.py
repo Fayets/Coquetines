@@ -2,7 +2,12 @@ from fastapi import HTTPException, APIRouter, Depends, Query
 from pony.orm import *
 from src import schemas
 from src.services.product_services import ProductServices
-from src.controllers.auth_controller import get_current_user, get_sucursal_id_for_user, get_owner_user
+from src.controllers.auth_controller import (
+    get_current_user,
+    get_sucursal_id_for_user,
+    get_sucursal_id_for_stock_read,
+    get_owner_user,
+)
 from pydantic import BaseModel
 from typing import List
 
@@ -71,7 +76,7 @@ def get_product(
         if role == "OWNER":
             return service.get_product_by_code(codigo, sucursal_id=None, ocultar_costo=False)
         # ADMIN / EMPLEADO: necesitan sucursal
-        sid = get_sucursal_id_for_user(current_user, sucursal_id)
+        sid = get_sucursal_id_for_stock_read(current_user, sucursal_id)
         if sid is None:
             raise HTTPException(status_code=400, detail="Debe indicar sucursal (o tener una asignada).")
         return service.get_product_by_code(codigo, sucursal_id=sid, ocultar_costo=ocultar_costo)
@@ -88,7 +93,7 @@ def get_all_products(
 ):
     """Lista productos de la sucursal (o todas para OWNER)."""
     try:
-        sid = get_sucursal_id_for_user(current_user, sucursal_id)
+        sid = get_sucursal_id_for_stock_read(current_user, sucursal_id)
         if sid is not None:
             sid = int(sid)
         ocultar_costo = getattr(current_user, "role", None) == "EMPLEADO"
@@ -137,7 +142,7 @@ def get_low_stock_products(
     sucursal_id: int | None = Query(None),
     current_user=Depends(get_current_user),
 ):
-    sid = get_sucursal_id_for_user(current_user, sucursal_id)
+    sid = get_sucursal_id_for_stock_read(current_user, sucursal_id)
     ocultar_costo = getattr(current_user, "role", None) == "EMPLEADO"
     try:
         return service.get_low_stock_products(sucursal_id=sid, ocultar_costo=ocultar_costo)
@@ -152,7 +157,7 @@ def total_products(
     sucursal_id: int | None = Query(None),
     current_user=Depends(get_current_user),
 ):
-    sid = get_sucursal_id_for_user(current_user, sucursal_id)
+    sid = get_sucursal_id_for_stock_read(current_user, sucursal_id)
     try:
         return service.get_total_products(sucursal_id=sid)
     except Exception as e:
@@ -167,7 +172,7 @@ def inventory_value(
     sucursal_id: int | None = Query(None),
     current_user=Depends(get_current_user),
 ):
-    sid = get_sucursal_id_for_user(current_user, sucursal_id)
+    sid = get_sucursal_id_for_stock_read(current_user, sucursal_id)
     try:
         return service.get_inventory_value(sucursal_id=sid)
     except Exception as e:
@@ -182,7 +187,7 @@ def low_stock_count(
     sucursal_id: int | None = Query(None),
     current_user=Depends(get_current_user),
 ):
-    sid = get_sucursal_id_for_user(current_user, sucursal_id)
+    sid = get_sucursal_id_for_stock_read(current_user, sucursal_id)
     try:
         return service.get_low_stock_count(sucursal_id=sid)
     except Exception as e:

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Coquetines">
+  <!-- Fondo crema: el arcoíris solo se pierde contra las pestañas oscuras. -->
+  <rect width="64" height="64" rx="14" fill="#FBF6F0"/>
+  <g fill="none" stroke-linecap="round" stroke-width="6">
+    <path d="M8 46 A24 24 0 0 1 56 46" stroke="#EFC9A8"/>
+    <path d="M15 46 A17 17 0 0 1 49 46" stroke="#C4794F"/>
+    <path d="M22 46 A10 10 0 0 1 42 46" stroke="#DDA89C"/>
+  </g>
+  <path d="M32 44c-3-3.2-6.8-5.2-6.8-8.6a3.6 3.6 0 0 1 6.8-1.7 3.6 3.6 0 0 1 6.8 1.7c0 3.4-3.8 5.4-6.8 8.6Z" fill="#9DAE8B"/>
+</svg>

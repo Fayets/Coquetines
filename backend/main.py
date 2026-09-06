@@ -9,10 +9,14 @@ from src.db_migrations import (
     ensure_caja_diaria_turno_y_unique,
     ensure_sucursal_tienda_online_columns,
     ensure_tienda_online_markup_columns,
+    ensure_catalogo_web_columns,
+    ensure_pedidos_web_venta_columna,
 )
 from pony.orm import *
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 from src.controllers.auth_controller import router as auth_router
 from src.controllers.users_controller import router as users_router
 from src.controllers.product_controller import router as product_router
@@ -27,11 +31,20 @@ from src.controllers.caja_controller import router as caja_router
 from src.controllers.config_controller import router as config_router
 from src.controllers.sucursal_controller import router as sucursal_router
 from src.controllers.woo_controller import router as woo_router
+from src.controllers.catalogo_controller import router as catalogo_router
+from src.controllers.pedidos_web_controller import router as pedidos_web_router
+from src.controllers.catalogo_admin_controller import router as catalogo_admin_router
 app = FastAPI()
+
+_WOO_UPLOADS_DIR = Path(__file__).resolve().parent / "uploads" / "woo"
+_WOO_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/static/woo-uploads", StaticFiles(directory=_WOO_UPLOADS_DIR), name="woo-uploads")
 
 # DDL en tablas ya existentes (Pony no agrega columnas nuevas en Postgres por sí solo)
 print("[startup] Verificando columnas de precios en Products...")
 ensure_products_precios_contado_columns()
+ensure_catalogo_web_columns()
+ensure_pedidos_web_venta_columna()
 ensure_ventas_pagos_y_tipo_precio_linea()
 ensure_movimientos_caja_pago_mixto_column()
 ensure_caja_diaria_turno_y_unique()
@@ -110,6 +123,15 @@ app.include_router(sucursal_router, prefix="/sucursales", tags=["sucursales"])
 
 # WooCommerce (integración externa vía API key)
 app.include_router(woo_router, prefix="/woo", tags=["WooCommerce"])
+
+# Catálogo público (landing / vidriera): solo lectura, sin autenticación
+app.include_router(catalogo_router, prefix="/catalogo", tags=["catalogo"])
+
+# Pedidos que llegan del catálogo público (bandeja del panel)
+app.include_router(pedidos_web_router, prefix="/pedidos-web", tags=["pedidos web"])
+
+# Administración del catálogo web (la maneja la dueña)
+app.include_router(catalogo_admin_router, prefix="/catalogo-admin", tags=["catalogo admin"])
 # Personalizar el esquema de seguridad en OpenAPI para usar Bearer tokens
 def custom_openapi():
     if app.openapi_schema:

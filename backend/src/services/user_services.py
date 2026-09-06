@@ -46,10 +46,21 @@ class UsersService:
             if not user:
                 return None
             sid = None
+            es_tienda_online = False
+            sucursal_stock_id = None
+            sucursal_stock_nombre = None
             if getattr(user, "sucursal", None) is not None:
                 s = user.sucursal
                 if s is not None and getattr(s, "id", None) is not None:
                     sid = int(s.id)
+                    es_tienda_online = bool(getattr(s, "es_tienda_online", False) or False)
+                    if es_tienda_online:
+                        stock_id = getattr(s, "sucursal_stock_id", None)
+                        if stock_id is not None:
+                            sucursal_stock_id = int(stock_id)
+                            stock_suc = models.Sucursal.get(id=sucursal_stock_id)
+                            if stock_suc and getattr(stock_suc, "nombre", None):
+                                sucursal_stock_nombre = str(stock_suc.nombre)
             return SimpleNamespace(
                 id=user.id,
                 username=user.username,
@@ -58,6 +69,9 @@ class UsersService:
                 lastName=getattr(user, "lastName", "") or "",
                 role=getattr(user, "role", "ADMIN") or "ADMIN",
                 sucursal_id=sid,
+                es_tienda_online=es_tienda_online,
+                sucursal_stock_id=sucursal_stock_id,
+                sucursal_stock_nombre=sucursal_stock_nombre,
             )
 
     def search_user(self, username: Optional[str], email: Optional[str], password: str):
@@ -77,13 +91,24 @@ class UsersService:
 
             sucursal_id = None
             sucursal_nombre = None
+            es_tienda_online = False
+            sucursal_stock_id = None
+            sucursal_stock_nombre = None
             if getattr(user, "sucursal", None) is not None:
                 s = user.sucursal
                 if s is not None:
                     sucursal_id = int(s.id) if s.id is not None else None
                     sucursal_nombre = str(s.nombre) if getattr(s, "nombre", None) else None
+                    es_tienda_online = bool(getattr(s, "es_tienda_online", False) or False)
+                    if es_tienda_online:
+                        stock_id = getattr(s, "sucursal_stock_id", None)
+                        if stock_id is not None:
+                            sucursal_stock_id = int(stock_id)
+                            stock_suc = models.Sucursal.get(id=sucursal_stock_id)
+                            if stock_suc and getattr(stock_suc, "nombre", None):
+                                sucursal_stock_nombre = str(stock_suc.nombre)
 
-            return user, sucursal_id, sucursal_nombre
+            return user, sucursal_id, sucursal_nombre, es_tienda_online, sucursal_stock_id, sucursal_stock_nombre
 
     @staticmethod
     def hash_password(password: str) -> str:

@@ -19,3 +19,7 @@ reportlab>=4.0.0
 
 # HTTP (WhatsApp / integraciones)
 httpx>=0.27.0
+
+# Subida y redimensionado de fotos del catálogo
+python-multipart>=0.0.9
+Pillow>=10.2.0

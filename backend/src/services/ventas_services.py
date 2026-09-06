@@ -376,9 +376,46 @@ class VentasServices:
 
                 deleted_id = venta.id
 
+                # El ingreso de caja va por referencia_id (no hay FK), así que
+                # si no se revierte a mano queda plata de una venta que ya no
+                # existe. Solo se toca si la caja sigue abierta: modificar un
+                # cierre ya hecho descuadraría la contabilidad del día.
+                aviso_caja = None
+                # SQL directo: los lambda de Pony con `and` no compilan en
+                # Python 3.13 y los de una sola condición ya dieron resultados
+                # incorrectos en este proyecto.
+                # db.select con una sola columna devuelve escalares, no tuplas.
+                ids_mov = models.db.select(
+                    "SELECT id FROM \"Movimientos_Caja\" "
+                    "WHERE origen = 'VENTA' AND referencia_id = $deleted_id"
+                )
+                for mov in [models.MovimientoCaja.get(id=i) for i in ids_mov]:
+                    if mov is None:
+                        continue
+                    caja = mov.caja
+                    if caja is None:
+                        mov.delete()
+                        continue
+                    if caja.estado == "CERRADA":
+                        aviso_caja = (
+                            f" La caja del {caja.fecha} ya estaba cerrada: "
+                            f"el ingreso de ${float(mov.monto):,.2f} sigue ahí, ajustalo a mano."
+                        )
+                        continue
+                    caja.total_ingresos = float(caja.total_ingresos or 0) - float(mov.monto or 0)
+                    caja.saldo_final = (
+                        float(caja.saldo_inicial or 0)
+                        + float(caja.total_ingresos or 0)
+                        - float(caja.total_egresos or 0)
+                    )
+                    mov.delete()
+
                 venta.delete()
-                
-                return {"message": f"Venta #{deleted_id} eliminada correctamente"}
+
+                mensaje = f"Venta #{deleted_id} eliminada correctamente"
+                if aviso_caja:
+                    mensaje += aviso_caja
+                return {"message": mensaje}
             except Exception as e:
                 import traceback
                 error_details = traceback.format_exc()

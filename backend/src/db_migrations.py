@@ -517,3 +517,98 @@ def _sqlite_tienda_online_markup_columns() -> None:
         )
     finally:
         conn.close()
+
+
+def ensure_catalogo_web_columns() -> None:
+    """Columnas del catálogo propio en Products (idempotente).
+
+    El catálogo dejó de depender de la sucursal "tienda online": publicar es
+    una propiedad del producto, no de una sucursal fantasma.
+    """
+    provider = (config("DB_PROVIDER", default="") or "").strip().lower()
+    if provider in ("postgres", "postgresql"):
+        _postgres_catalogo_web_columns()
+    elif provider == "sqlite":
+        _sqlite_catalogo_web_columns()
+
+
+_COLUMNAS_CATALOGO = [
+    ("publicado_web", "BOOLEAN DEFAULT FALSE"),
+    ("precio_web", "DOUBLE PRECISION"),
+    ("imagen_url", "TEXT"),
+    ("orden_web", "INTEGER DEFAULT 0"),
+]
+
+
+def _postgres_catalogo_web_columns() -> None:
+    import psycopg2
+
+    conn = psycopg2.connect(
+        user=config("DB_USER"),
+        password=config("DB_PASS"),
+        host=config("DB_HOST"),
+        dbname=config("DB_NAME"),
+        connect_timeout=15,
+    )
+    try:
+        conn.autocommit = True
+        cur = conn.cursor()
+        for nombre, tipo in _COLUMNAS_CATALOGO:
+            cur.execute(f'ALTER TABLE "Products" ADD COLUMN IF NOT EXISTS {nombre} {tipo}')
+        # Los productos viejos quedan sin publicar en vez de en NULL.
+        cur.execute('UPDATE "Products" SET publicado_web = FALSE WHERE publicado_web IS NULL')
+        cur.execute('UPDATE "Products" SET orden_web = 0 WHERE orden_web IS NULL')
+        cur.close()
+        print("[startup] Columnas de catálogo web verificadas en Products (PostgreSQL).")
+    finally:
+        conn.close()
+
+
+def _sqlite_catalogo_web_columns() -> None:
+    import sqlite3
+
+    conn = sqlite3.connect(config("DB_NAME"))
+    try:
+        cur = conn.cursor()
+        existentes = {fila[1] for fila in cur.execute('PRAGMA table_info("Products")').fetchall()}
+        for nombre, tipo in _COLUMNAS_CATALOGO:
+            if nombre not in existentes:
+                cur.execute(f'ALTER TABLE "Products" ADD COLUMN {nombre} {tipo}')
+        conn.commit()
+        cur.close()
+        print("[startup] Columnas de catálogo web verificadas en Products (SQLite).")
+    finally:
+        conn.close()
+
+
+def ensure_pedidos_web_venta_columna() -> None:
+    """Pedidos_Web.venta_id: vincula el pedido con la venta que lo cerró."""
+    provider = (config("DB_PROVIDER", default="") or "").strip().lower()
+    if provider in ("postgres", "postgresql"):
+        import psycopg2
+
+        conn = psycopg2.connect(
+            user=config("DB_USER"), password=config("DB_PASS"),
+            host=config("DB_HOST"), dbname=config("DB_NAME"), connect_timeout=15,
+        )
+        try:
+            conn.autocommit = True
+            cur = conn.cursor()
+            cur.execute('ALTER TABLE "Pedidos_Web" ADD COLUMN IF NOT EXISTS venta_id INTEGER')
+            cur.close()
+            print("[startup] Columna Pedidos_Web.venta_id verificada (PostgreSQL).")
+        finally:
+            conn.close()
+    elif provider == "sqlite":
+        import sqlite3
+
+        conn = sqlite3.connect(config("DB_NAME"))
+        try:
+            cur = conn.cursor()
+            cols = {f[1] for f in cur.execute('PRAGMA table_info("Pedidos_Web")').fetchall()}
+            if "venta_id" not in cols:
+                cur.execute('ALTER TABLE "Pedidos_Web" ADD COLUMN venta_id INTEGER')
+            conn.commit()
+            cur.close()
+        finally:
+            conn.close()
