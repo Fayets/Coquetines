@@ -43,6 +43,36 @@ export function subirImagen(id, archivo) {
     .then((r) => r.data);
 }
 
+export function verGaleria(id) {
+  return axios
+    .get(`${API_URL}/catalogo-admin/${id}/galeria`, { headers: cabeceras() })
+    .then((r) => r.data);
+}
+
+/** Suma una foto a la galería sin pisar las anteriores. */
+export function sumarAGaleria(id, archivo) {
+  const form = new FormData();
+  form.append("archivo", archivo);
+  return axios
+    .post(`${API_URL}/catalogo-admin/${id}/galeria`, form, { headers: cabeceras() })
+    .then((r) => r.data);
+}
+
+export function quitarDeGaleria(id, imagenId) {
+  return axios
+    .delete(`${API_URL}/catalogo-admin/${id}/galeria/${imagenId}`, { headers: cabeceras() })
+    .then((r) => r.data);
+}
+
+/** Foto de la tabla de talles: queda en todo el modelo. */
+export function subirTablaTalles(id, archivo) {
+  const form = new FormData();
+  form.append("archivo", archivo);
+  return axios
+    .post(`${API_URL}/catalogo-admin/${id}/tabla-talles`, form, { headers: cabeceras() })
+    .then((r) => r.data);
+}
+
 export function borrarImagen(id) {
   return axios
     .delete(`${API_URL}/catalogo-admin/${id}/imagen`, { headers: cabeceras() })

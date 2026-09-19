@@ -90,6 +90,11 @@ class Product(db.Entity):
     precio_web = Optional(float, default=0)
     imagen_url = Optional(str, default="")
     orden_web = Optional(int, default=0)
+    # Ficha de producto: texto corto y foto de la tabla de talles. Se guardan
+    # en todas las filas del mismo modelo (mismo nombre+marca+color), porque
+    # la clienta ve un modelo con selector de talle, no una fila por talle.
+    descripcion_web = Optional(str, default="")
+    tabla_talles_url = Optional(str, default="")
     imagenes_web = Set("ImagenProducto", reverse="producto")
     _table_ = "Products"
 
@@ -107,6 +112,8 @@ class ImagenProducto(db.Entity):
     producto = Optional("Product", column="producto_id")
     contenido = Required(bytes)
     mime = Required(str, default="image/jpeg")
+    # Orden dentro de la galería. La primera es la que sale en la tarjeta.
+    orden = Optional(int, default=0)
     creada = Required(datetime, default=lambda: datetime.now())
     _table_ = "Imagenes_Producto"
 

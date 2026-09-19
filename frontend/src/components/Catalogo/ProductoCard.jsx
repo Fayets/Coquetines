@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Check, MessageCircle, Plus } from "lucide-react";
 import {
   coloresDeProducto,
@@ -39,6 +40,11 @@ export default function ProductoCard({ producto, enCarrito, onAgregar, indice })
   const ultimas = producto.stock <= 3;
   const marcaVisible =
     producto.marca && producto.marca.toLowerCase() !== "generico" ? producto.marca : "";
+  // Con varios talles hay que elegir uno: la tarjeta lleva a la ficha en vez
+  // de sumar a ciegas. Con uno solo, se agrega de una.
+  const talles = producto.talles || [];
+  const varios = talles.length > 1;
+  const ficha = `/catalogo/producto/${producto.id}`;
 
   return (
     <article
@@ -51,8 +57,10 @@ export default function ProductoCard({ producto, enCarrito, onAgregar, indice })
     >
       {/* Si el producto tiene foto la mostramos; si no (el sistema todavía no
           guarda imágenes), armamos un mosaico con el color del inventario. */}
-      <div
-        className="relative aspect-[7/10] overflow-hidden"
+      <Link
+        to={ficha}
+        aria-label={`Ver ${producto.nombre}`}
+        className="relative block aspect-[7/10] overflow-hidden"
         style={{ background: `linear-gradient(150deg, ${claro} 0%, ${oscuro} 100%)` }}
       >
         {producto.imagen ? (
@@ -80,7 +88,7 @@ export default function ProductoCard({ producto, enCarrito, onAgregar, indice })
           className="absolute left-3 top-3 rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-wide backdrop-blur"
           style={{ background: "rgba(255,255,255,.85)", color: "var(--coq-espresso)" }}
         >
-          Talle {producto.talle}
+          {varios ? `${talles.length} talles` : `Talle ${producto.talle || talles[0] || "único"}`}
         </span>
 
         {ultimas && (
@@ -94,7 +102,11 @@ export default function ProductoCard({ producto, enCarrito, onAgregar, indice })
 
         <button
           type="button"
-          onClick={() => consultarProducto(producto)}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            consultarProducto(producto);
+          }}
           className="absolute bottom-3 right-3 flex h-9 w-9 items-center justify-center rounded-full shadow-sm transition-all duration-300 sm:opacity-0 sm:focus-visible:opacity-100 sm:group-hover:opacity-100"
           style={{ background: "#fff", color: "var(--coq-salvia)" }}
           title="Consultar este producto por WhatsApp"
@@ -102,7 +114,7 @@ export default function ProductoCard({ producto, enCarrito, onAgregar, indice })
         >
           <MessageCircle size={17} />
         </button>
-      </div>
+      </Link>
 
       <div className="flex flex-1 flex-col gap-1 p-4">
         {/* Renglón siempre presente: si aparece y desaparece según la marca,
@@ -117,7 +129,9 @@ export default function ProductoCard({ producto, enCarrito, onAgregar, indice })
         {/* Alto fijo de dos líneas: un nombre largo no puede empujar el precio
             ni el botón, o las tarjetas de la fila quedan desalineadas. */}
         <h3 className="line-clamp-2 min-h-[2.6em] text-[13px] font-medium leading-snug sm:text-[15px]">
-          {producto.nombre}
+          <Link to={ficha} className="no-underline" style={{ color: "inherit" }}>
+            {producto.nombre}
+          </Link>
         </h3>
 
         <p className="truncate text-xs" style={{ color: "var(--coq-espresso-2)" }}>
@@ -131,15 +145,25 @@ export default function ProductoCard({ producto, enCarrito, onAgregar, indice })
             {formatearPrecio(producto.precio)}
           </p>
 
-          <button
-            type="button"
-            onClick={() => onAgregar(producto)}
-            className="flex w-full items-center justify-center gap-1.5 rounded-full px-3 py-2.5 text-xs font-semibold text-white transition-colors"
-            style={{ background: enCarrito ? "var(--coq-salvia)" : "var(--coq-espresso)" }}
-          >
-            {enCarrito ? <Check size={14} /> : <Plus size={14} />}
-            {enCarrito ? "Sumar otra" : "Agregar"}
-          </button>
+          {varios ? (
+            <Link
+              to={ficha}
+              className="flex w-full items-center justify-center gap-1.5 rounded-full px-3 py-2.5 text-xs font-semibold text-white no-underline transition-colors"
+              style={{ background: "var(--coq-espresso)" }}
+            >
+              Ver talles
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onAgregar({ ...producto, talle: producto.talle || talles[0] || "" })}
+              className="flex w-full items-center justify-center gap-1.5 rounded-full px-3 py-2.5 text-xs font-semibold text-white transition-colors"
+              style={{ background: enCarrito ? "var(--coq-salvia)" : "var(--coq-espresso)" }}
+            >
+              {enCarrito ? <Check size={14} /> : <Plus size={14} />}
+              {enCarrito ? "Sumar otra" : "Agregar"}
+            </button>
+          )}
         </div>
       </div>
     </article>

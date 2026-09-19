@@ -35,6 +35,8 @@ import ConsultarStockSucursales from "./components/Inventario/ConsultarStockSucu
 import GestionProductosWeb from "./components/TiendaWeb/GestionProductosWeb";
 import ProductosPublicadosWeb from "./components/TiendaWeb/ProductosPublicadosWeb";
 import CatalogoPublico from "./components/Catalogo/CatalogoPublico";
+import CatalogoGrilla from "./components/Catalogo/CatalogoGrilla";
+import ProductoDetalle from "./components/Catalogo/ProductoDetalle";
 import PedidosWeb from "./components/TiendaWeb/PedidosWeb";
 import CatalogoAdmin from "./components/CatalogoWeb/CatalogoAdmin";
 
@@ -45,7 +47,12 @@ function App() {
         <Route path="/" element={<Login />} />
 
         {/* Catálogo público: sin login, es la vidriera para clientas */}
-        <Route path="/catalogo" element={<CatalogoPublico />} />
+        {/* El catálogo es un layout: header y carrito fijos, adentro la
+            vidriera o la ficha de un producto. */}
+        <Route path="/catalogo" element={<CatalogoPublico />}>
+          <Route index element={<CatalogoGrilla />} />
+          <Route path="producto/:id" element={<ProductoDetalle />} />
+        </Route>
 
         <Route element={<PrivateRoute element={<SidebarLayout />} />}>
           <Route path="dashboard" element={<DashboardStats />} />

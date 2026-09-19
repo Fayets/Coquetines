@@ -11,6 +11,7 @@ from src.db_migrations import (
     ensure_tienda_online_markup_columns,
     ensure_catalogo_web_columns,
     ensure_pedidos_web_venta_columna,
+    ensure_imagenes_producto_orden,
 )
 from pony.orm import *
 from fastapi import FastAPI
@@ -45,6 +46,7 @@ print("[startup] Verificando columnas de precios en Products...")
 ensure_products_precios_contado_columns()
 ensure_catalogo_web_columns()
 ensure_pedidos_web_venta_columna()
+ensure_imagenes_producto_orden()
 ensure_ventas_pagos_y_tipo_precio_linea()
 ensure_movimientos_caja_pago_mixto_column()
 ensure_caja_diaria_turno_y_unique()

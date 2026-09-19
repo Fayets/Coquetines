@@ -7,9 +7,11 @@ import {
   ImagePlus,
   Loader2,
   Search,
+  Pencil,
   X,
 } from "lucide-react";
 import Swal from "sweetalert2";
+import FichaPanel from "./FichaPanel";
 import useAuth from "../Hooks/useAuth";
 import {
   actualizarProducto,
@@ -214,6 +216,7 @@ export default function CatalogoAdmin() {
   const [pagina, setPagina] = useState(1);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
+  const [fichaAbierta, setFichaAbierta] = useState(null);
 
   // Cada listado lleva número: si vuelve uno viejo (pedido antes de que la
   // dueña tocara un switch), se descarta en vez de pisar el cambio.
@@ -331,18 +334,19 @@ export default function CatalogoAdmin() {
               <th className="px-4 py-3 text-right font-semibold">Lista</th>
               <th className="px-4 py-3 text-left font-semibold">Precio web</th>
               <th className="px-4 py-3 text-center font-semibold">En la web</th>
+              <th className="px-4 py-3 text-center font-semibold">Ficha</th>
             </tr>
           </thead>
           <tbody>
             {cargando ? (
               <tr>
-                <td colSpan={7} className="py-16 text-center text-slate-400">
+                <td colSpan={8} className="py-16 text-center text-slate-400">
                   <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                 </td>
               </tr>
             ) : datos.productos.length === 0 ? (
               <tr>
-                <td colSpan={7} className="py-16 text-center text-sm text-slate-500">
+                <td colSpan={8} className="py-16 text-center text-sm text-slate-500">
                   No hay productos con ese filtro.
                 </td>
               </tr>
@@ -385,12 +389,32 @@ export default function CatalogoAdmin() {
                       }}
                     />
                   </td>
+                  <td className="px-4 py-3 text-center">
+                    <button
+                      type="button"
+                      onClick={() => setFichaAbierta(p)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                      title="Fotos, descripción y tabla de talles"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                      {p.fotos > 1 ? `${p.fotos} fotos` : "Editar"}
+                    </button>
+                  </td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
       </div>
+
+      <FichaPanel
+        producto={fichaAbierta}
+        onCerrar={() => setFichaAbierta(null)}
+        onGuardado={(actualizado) => {
+          reemplazar(actualizado);
+          setFichaAbierta((f) => (f ? { ...f, ...actualizado } : f));
+        }}
+      />
 
       <div className="mt-4 flex items-center justify-between text-sm text-slate-500">
         <span>

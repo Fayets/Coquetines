@@ -1,0 +1,19 @@
+# Secretos: el .env vive en el servidor, no en el repo.
+# Ver backend/.env.template para saber qué variables hay que definir.
+.env
+.env.local
+*.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Node
+node_modules/
+dist/
+
+# macOS
+.DS_Store

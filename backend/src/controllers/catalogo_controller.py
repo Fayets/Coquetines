@@ -38,7 +38,9 @@ class CatalogoProductoItem(BaseModel):
     categoria: str | None = None
     stock: int
     precio: float
+    precio_hasta: float = 0
     imagen: str | None = None
+    talles: list[str] = []
 
 
 class CatalogoResponse(BaseModel):
@@ -47,6 +49,18 @@ class CatalogoResponse(BaseModel):
     productos: list[CatalogoProductoItem]
     categorias: list[str]
     talles: list[str]
+
+
+def invalidar_cache() -> None:
+    """Fuerza releer el catálogo en la próxima visita.
+
+    La lo llama el panel al publicar, despublicar o cambiar precios: sin esto
+    la dueña publicaba algo y no lo veía en la web hasta un minuto después,
+    que parece que el sistema no funciona.
+    """
+    global _cache, _cache_ts
+    _cache = None
+    _cache_ts = 0.0
 
 
 def _armar_catalogo() -> dict:
@@ -100,6 +114,34 @@ class PedidoResponse(BaseModel):
     numero: str
     total: float
     items: list[PedidoItemResponse]
+
+
+class VarianteItem(BaseModel):
+    id: int
+    codigo: str
+    talle: str
+    stock: int
+    precio: float
+    disponible: bool
+
+
+class FichaResponse(BaseModel):
+    id: int
+    nombre: str
+    marca: str | None = None
+    color: str | None = None
+    categoria: str | None = None
+    descripcion: str = ""
+    tabla_talles: str | None = None
+    galeria: list[str] = []
+    variantes: list[VarianteItem] = []
+    relacionados: list[CatalogoProductoItem] = []
+
+
+@router.get("/producto/{producto_id}", response_model=FichaResponse)
+def ficha_producto(producto_id: int):
+    """Ficha del modelo: galería, talles, descripción y relacionados."""
+    return service.ficha_publica(producto_id)
 
 
 @router.get("/imagen/{imagen_id}")

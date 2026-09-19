@@ -537,6 +537,9 @@ _COLUMNAS_CATALOGO = [
     ("precio_web", "DOUBLE PRECISION"),
     ("imagen_url", "TEXT"),
     ("orden_web", "INTEGER DEFAULT 0"),
+    # Ficha de producto
+    ("descripcion_web", "TEXT"),
+    ("tabla_talles_url", "TEXT"),
 ]
 
 
@@ -608,6 +611,40 @@ def ensure_pedidos_web_venta_columna() -> None:
             cols = {f[1] for f in cur.execute('PRAGMA table_info("Pedidos_Web")').fetchall()}
             if "venta_id" not in cols:
                 cur.execute('ALTER TABLE "Pedidos_Web" ADD COLUMN venta_id INTEGER')
+            conn.commit()
+            cur.close()
+        finally:
+            conn.close()
+
+
+def ensure_imagenes_producto_orden() -> None:
+    """Imagenes_Producto.orden: posición dentro de la galería del producto."""
+    provider = (config("DB_PROVIDER", default="") or "").strip().lower()
+    if provider in ("postgres", "postgresql"):
+        import psycopg2
+
+        conn = psycopg2.connect(
+            user=config("DB_USER"), password=config("DB_PASS"),
+            host=config("DB_HOST"), dbname=config("DB_NAME"), connect_timeout=15,
+        )
+        try:
+            conn.autocommit = True
+            cur = conn.cursor()
+            cur.execute('ALTER TABLE "Imagenes_Producto" ADD COLUMN IF NOT EXISTS orden INTEGER DEFAULT 0')
+            cur.execute('UPDATE "Imagenes_Producto" SET orden = 0 WHERE orden IS NULL')
+            cur.close()
+            print("[startup] Columna Imagenes_Producto.orden verificada (PostgreSQL).")
+        finally:
+            conn.close()
+    elif provider == "sqlite":
+        import sqlite3
+
+        conn = sqlite3.connect(config("DB_NAME"))
+        try:
+            cur = conn.cursor()
+            cols = {f[1] for f in cur.execute('PRAGMA table_info("Imagenes_Producto")').fetchall()}
+            if "orden" not in cols:
+                cur.execute('ALTER TABLE "Imagenes_Producto" ADD COLUMN orden INTEGER DEFAULT 0')
             conn.commit()
             cur.close()
         finally:
