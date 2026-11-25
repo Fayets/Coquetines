@@ -22,6 +22,9 @@ export default function GenerarCodigosBarra() {
   const [seleccionados, setSeleccionados] = useState([]);
   const [loading, setLoading] = useState(true);
   const [generando, setGenerando] = useState(false);
+  const [incluirPrecio, setIncluirPrecio] = useState(
+    () => localStorage.getItem("etiquetasIncluirPrecio") === "1"
+  );
   const searchRef = useRef(null);
   const scanTimerRef = useRef(null);
 
@@ -75,6 +78,10 @@ export default function GenerarCodigosBarra() {
       if (scanTimerRef.current) clearTimeout(scanTimerRef.current);
     };
   }, [busqueda, productos]);
+
+  useEffect(() => {
+    localStorage.setItem("etiquetasIncluirPrecio", incluirPrecio ? "1" : "0");
+  }, [incluirPrecio]);
 
   const fetchProductos = async () => {
     try {
@@ -163,6 +170,7 @@ export default function GenerarCodigosBarra() {
           producto_id: s.id,
           cantidad: s.cantidad,
         })),
+        incluir_precio: incluirPrecio,
       };
 
       const res = await axios.post(`${baseUrl}/reportes/generate_barcodes`, body, {
@@ -411,6 +419,17 @@ export default function GenerarCodigosBarra() {
 
           {seleccionados.length > 0 && (
             <div className="p-4 border-t border-slate-100">
+              <label className="flex items-center gap-2 mb-3 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={incluirPrecio}
+                  onChange={(e) => setIncluirPrecio(e.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                />
+                <span className="text-sm text-slate-700">
+                  Incluir precio en la etiqueta
+                </span>
+              </label>
               <button
                 onClick={generarPDF}
                 disabled={generando}

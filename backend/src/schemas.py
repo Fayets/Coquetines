@@ -501,3 +501,4 @@ class CodigoBarraItem(BaseModel):
 
 class CodigoBarraRequest(BaseModel):
     productos: List[CodigoBarraItem]
+    incluir_precio: bool = False

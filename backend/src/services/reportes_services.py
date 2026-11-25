@@ -20,6 +20,11 @@ def _draw_right(c, text: str, x_right: float, y: float, font_name: str, font_siz
     c.drawString(x_right - _text_width(text, font_name, font_size), y, text)
 
 
+def _formato_precio_etiqueta(valor: float) -> str:
+    """Formatea el precio para la etiqueta: $42.500 (punto de miles, sin decimales)."""
+    return "$" + f"{int(round(valor)):,}".replace(",", ".")
+
+
 def _truncate_to_width(text: str, font_name: str, font_size: float, max_width: float) -> str:
     """Recorta con … para que el texto no exceda max_width puntos (ReportLab)."""
     if not text:
@@ -649,6 +654,7 @@ class ReportService:
                         "codigo": producto.codigo,
                         "nombre": producto.nombre,
                         "talle": (producto.talle or "").strip(),
+                        "precio": float(producto.precio_venta or 0),
                     })
 
             if not labels:
@@ -714,13 +720,25 @@ class ReportService:
                             c.setFont("Helvetica", 5.5)
                             c.drawCentredString(x + label_w / 2, line_y, f"Talle: {lbl['talle']}")
 
+                        precio_display = ""
+                        if data.incluir_precio and lbl["precio"] > 0:
+                            precio_display = _formato_precio_etiqueta(lbl["precio"])
+                            c.setFont("Helvetica-Bold", 9)
+                            c.drawCentredString(
+                                x + label_w / 2,
+                                y + label_h - 28,
+                                _truncate_to_width(
+                                    precio_display, "Helvetica-Bold", 9, label_w - 2 * inner_pad
+                                ),
+                            )
+
                         barcode_value = str(lbl["codigo"] or "")
                         # Números abajo, barras arriba; separación clara entre base del Code128 y el texto
                         text_baseline = y + 2 * mm
                         gap_bar_to_text = 2.2 * mm
                         text_cap_pt = 5.8  # altura aprox. de dígitos Helvetica 6 sobre la línea base
                         bc_y = text_baseline + text_cap_pt + gap_bar_to_text
-                        max_bar_top = y + label_h - 11
+                        max_bar_top = y + label_h - (34 if precio_display else 11)
                         bar_h = bar_height
                         if bc_y + bar_h > max_bar_top:
                             bar_h = max(6 * mm, max_bar_top - bc_y)
